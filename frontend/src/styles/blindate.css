@@ -1,0 +1,204 @@
+/* Blindate Page Custom Styles - Boba Tea Theme */
+
+/* Boba Tea Color Palette */
+:root {
+  --boba-primary: #c8a47e;       /* Main boba tea color */
+  --boba-secondary: #8c6d4f;     /* Darker boba tea */
+  --boba-light: #e8d7c3;         /* Light boba tea */
+  --boba-extra-light: #f5efe6;   /* Very light boba tea background */
+  --boba-dark: #5c4935;          /* Dark boba tea */
+  --boba-accent: #b38b6d;        /* Accent color */
+  --boba-text: #3c3028;          /* Text color */
+  --boba-pearl: #2e2218;         /* Dark pearl color */
+  --boba-cream: #f9f3eb;         /* Cream color */
+  --boba-border: #d9c5ad;        /* Border color */
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--boba-light);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--boba-primary);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--boba-secondary);
+}
+
+/* Subtle background */
+.boba-bg {
+  background-color: var(--boba-extra-light);
+}
+
+/* Card styles */
+.boba-card {
+  background-color: white;
+  border: 1px solid var(--boba-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.boba-card:hover {
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Colorful styles for the lg:col-span-3 boba card */
+.lg\:col-span-3.boba-card {
+  background: linear-gradient(135deg, #f5efe6 0%, #e8d7c3 100%);
+  border: 2px solid var(--boba-primary);
+  box-shadow: 0 6px 12px rgba(200, 164, 126, 0.2);
+}
+
+.lg\:col-span-3.boba-card:hover {
+  background: linear-gradient(135deg, #e8d7c3 0%, #c8a47e 100%);
+  box-shadow: 0 8px 16px rgba(200, 164, 126, 0.3);
+  transform: translateY(-3px);
+}
+
+/* Colorful styles for the lg:col-span-2 boba card */
+.lg\:col-span-2.boba-card {
+  background: linear-gradient(135deg, #f5efe6 0%, #d9c5ad 100%);
+  border: 2px solid var(--boba-accent);
+  box-shadow: 0 6px 12px rgba(179, 139, 109, 0.2);
+}
+
+.lg\:col-span-2.boba-card:hover {
+  background: linear-gradient(135deg, #d9c5ad 0%, #b38b6d 100%);
+  box-shadow: 0 8px 16px rgba(179, 139, 109, 0.3);
+  transform: translateY(-3px);
+}
+
+/* Header styles */
+.boba-header {
+  background-color: var(--boba-primary);
+  color: white;
+  padding: 1rem;
+  border-radius: 8px 8px 0 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add colorful headers for each card type */
+.lg\:col-span-3 .boba-header {
+  background: linear-gradient(135deg, var(--boba-primary) 0%, var(--boba-secondary) 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.lg\:col-span-3 .boba-header::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+}
+
+.lg\:col-span-2 .boba-header {
+  background: linear-gradient(135deg, var(--boba-accent) 0%, var(--boba-dark) 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.lg\:col-span-2 .boba-header::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+}
+
+/* Button styles */
+.boba-button-primary {
+  background-color: var(--boba-primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.boba-button-primary:hover {
+  background-color: var(--boba-secondary);
+}
+
+.boba-button-secondary {
+  background-color: white;
+  color: var(--boba-text);
+  border: 1px solid var(--boba-border);
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.boba-button-secondary:hover {
+  background-color: var(--boba-extra-light);
+}
+
+/* Text styles */
+.boba-title {
+  color: var(--boba-secondary);
+  font-weight: 700;
+}
+
+.boba-text {
+  color: var(--boba-text);
+}
+
+/* Tag styles */
+.boba-tag {
+  background-color: var(--boba-light);
+  color: var(--boba-dark);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+}
+
+/* Info box */
+.boba-info-box {
+  background-color: var(--boba-extra-light);
+  border: 1px solid var(--boba-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* Safety box */
+.boba-safety-box {
+  background-color: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .responsive-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .responsive-padding {
+    padding: 1rem !important;
+  }
+  
+  .responsive-text {
+    font-size: 0.9rem !important;
+  }
+  
+  .responsive-heading {
+    font-size: 1.5rem !important;
+  }
+}

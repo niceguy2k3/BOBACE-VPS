@@ -1,0 +1,63 @@
+/* Styles for blindate notifications */
+.toast-blindate-notification {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+}
+
+.toast-blindate-notification .sender-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px;
+  border: 2px solid #c8a47e;
+}
+
+.toast-blindate-notification .notification-content {
+  flex: 1;
+}
+
+.toast-blindate-notification .notification-title {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.toast-blindate-notification .notification-text {
+  font-size: 14px;
+  color: #666;
+}
+
+.toast-blindate-custom {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(200, 164, 126, 0.3) !important;
+  padding: 12px !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toast-blindate-custom:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Animation for blindate notifications */
+@keyframes pulse-border {
+  0% {
+    box-shadow: 0 0 0 0 rgba(200, 164, 126, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(200, 164, 126, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 164, 126, 0);
+  }
+}
+
+.toast-blindate-custom .sender-avatar {
+  animation: pulse-border 2s infinite;
+}

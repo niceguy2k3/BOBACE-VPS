@@ -1,0 +1,1168 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FaArrowLeft, FaHeart, FaUser, FaBirthdayCake, FaMapMarkerAlt, 
+  FaBriefcase, FaGraduationCap, FaMugHot, FaRunning, FaLanguage, 
+  FaStar, FaQuoteLeft, FaQuoteRight, FaGlassCheers, FaSmoking, 
+  FaUtensils, FaRegSmile, FaRegSadTear, FaRegMeh, FaRegLaughBeam,
+  FaRegAngry, FaRegSurprise, FaRegTired, FaRegDizzy, FaSearch,
+  FaCrown, FaUserCheck, FaCheck
+} from 'react-icons/fa';
+import { API_URL } from '../config/constants';
+import { useAuth } from '../contexts/AuthContext';
+import Loader from '../components/Loader';
+
+const UserProfile = () => {
+  const { userId } = useParams();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('basic');
+  const [showFullBio, setShowFullBio] = useState(false);
+  
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // Kiểm tra nếu userId là "unknown", không gọi API
+        if (userId === 'unknown') {
+          setError('Không thể tải thông tin người dùng tạm thời');
+          toast.error('Không thể xem thông tin người dùng tạm thời');
+          setLoading(false);
+          return;
+        }
+        
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+          console.error('No authentication token found');
+          toast.error('Vui lòng đăng nhập lại');
+          navigate('/login');
+          return;
+        }
+        
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        };
+        
+        // Gọi API để lấy thông tin người dùng
+        console.log('Fetching user data for ID:', userId);
+        const response = await axios.get(`${API_URL}/api/users/${userId}`, config);
+        console.log('User data response:', response.data);
+        
+        // Kiểm tra cấu trúc dữ liệu
+        const userData = response.data;
+        console.log('User verified status:', userData.verified);
+        
+        // Đảm bảo trường verified được thiết lập đúng
+        if (userData.verification && userData.verification.verificationStatus === 'verified') {
+          userData.verified = true;
+        }
+        
+        setUser(userData);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        setError(error.response?.data?.message || 'Không thể tải thông tin người dùng');
+        toast.error('Không thể tải thông tin người dùng');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (userId) {
+      fetchUserData();
+    }
+  }, [userId, navigate]);
+  
+  // Calculate age from birthDate
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return null;
+    
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+  
+  // Emoji cho các cung hoàng đạo
+  const getZodiacEmoji = (sign) => {
+    const zodiacEmojis = {
+      'Bạch Dương': '♈',
+      'Kim Ngưu': '♉',
+      'Song Tử': '♊',
+      'Cự Giải': '♋',
+      'Sư Tử': '♌',
+      'Xử Nữ': '♍',
+      'Thiên Bình': '♎',
+      'Bọ Cạp': '♏',
+      'Nhân Mã': '♐',
+      'Ma Kết': '♑',
+      'Bảo Bình': '♒',
+      'Song Ngư': '♓'
+    };
+    return zodiacEmojis[sign] || '';
+  };
+  
+  // Hiển thị thông tin giới tính bằng tiếng Việt
+  const getGenderText = (gender) => {
+    if (!gender) return '';
+    
+    // Chuyển đổi giá trị tiếng Anh sang tiếng Việt
+    const genderMap = {
+      'male': 'Nam',
+      'female': 'Nữ',
+      'non-binary': 'Phi nhị nguyên',
+      'transgender': 'Chuyển giới',
+      'genderqueer': 'Phi giới tính',
+      'genderfluid': 'Giới tính linh hoạt',
+      'agender': 'Không xác định giới tính',
+      'other': 'Khác'
+    };
+    
+    return genderMap[gender] || gender;
+  };
+  
+  // Dịch các giá trị lifestyle sang tiếng Việt
+  const getLifestyleText = (category, value) => {
+    if (!value) return '';
+    
+    const options = {
+      smoking: {
+        'never': 'Không bao giờ',
+        'sometimes': 'Thỉnh thoảng',
+        'often': 'Thường xuyên',
+        'quitting': 'Đang cai'
+      },
+      drinking: {
+        'never': 'Không bao giờ',
+        'sometimes': 'Thỉnh thoảng',
+        'often': 'Thường xuyên',
+        'quitting': 'Đang cai'
+      },
+      exercise: {
+        'never': 'Không bao giờ',
+        'sometimes': 'Thỉnh thoảng',
+        'often': 'Thường xuyên',
+        'daily': 'Hàng ngày'
+      },
+      diet: {
+        'omnivore': 'Ăn tạp',
+        'vegetarian': 'Ăn chay',
+        'vegan': 'Ăn thuần chay',
+        'pescatarian': 'Ăn chay và hải sản',
+        'keto': 'Keto',
+        'other': 'Khác'
+      }
+    };
+    
+    return options[category]?.[value] || value;
+  };
+  
+  // Emoji cho các tâm trạng
+  const getMoodEmoji = (mood) => {
+    switch(mood) {
+      case 'happy': return <FaRegLaughBeam className="text-yellow-500" />;
+      case 'sad': return <FaRegSadTear className="text-blue-500" />;
+      case 'angry': return <FaRegAngry className="text-red-500" />;
+      case 'surprised': return <FaRegSurprise className="text-purple-500" />;
+      case 'tired': return <FaRegTired className="text-gray-500" />;
+      case 'confused': return <FaRegDizzy className="text-orange-500" />;
+      default: return <FaRegSmile className="text-yellow-500" />;
+    }
+  };
+  
+  // Hiệu ứng animation
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { 
+      y: 0, 
+      opacity: 1,
+      transition: { type: 'spring', stiffness: 100 }
+    }
+  };
+  
+  // Thêm console.log để kiểm tra dữ liệu
+  console.log('User data in UserProfile:', user);
+  console.log('User verified status:', user?.verified);
+  
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[calc(100vh-64px)] bg-gradient-to-b from-yellow-50 to-white">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Loader />
+        </motion.div>
+      </div>
+    );
+  }
+  
+  if (error || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-64px)] bg-gradient-to-b from-yellow-50 to-white">
+        <motion.div 
+          className="text-center p-8 bg-white rounded-2xl shadow-lg max-w-md"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, type: 'spring', stiffness: 100 }}
+        >
+          <div className="text-yellow-500 text-5xl mb-4">
+            <motion.div
+              initial={{ rotateY: 0 }}
+              animate={{ rotateY: 360 }}
+              transition={{ duration: 1, delay: 0.5 }}
+            >
+              <FaUser className="mx-auto" />
+            </motion.div>
+          </div>
+          <h3 className="text-2xl font-bold text-neutral-800 mb-4">Không tìm thấy người dùng</h3>
+          <p className="text-neutral-600 mb-6">
+            {userId === 'unknown' 
+              ? 'Không thể xem thông tin người dùng tạm thời. Vui lòng đợi cho đến khi thông tin người dùng được tải đầy đủ.'
+              : 'Người dùng này không tồn tại hoặc bạn không có quyền xem thông tin của họ.'}
+          </p>
+          <motion.button 
+            onClick={() => navigate(-1)}
+            className="px-6 py-3 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition-colors duration-300 shadow-md"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Quay lại
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
+  
+  return (
+    <motion.div 
+      className="max-w-5xl mx-auto py-20 px-4 relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Background decorative elements */}
+      <div className="fixed top-0 left-0 w-full h-full bg-gradient-to-b from-amber-50/50 to-white/50 -z-20"></div>
+      <div className="fixed top-20 right-20 w-96 h-96 bg-gradient-to-br from-yellow-200/20 to-amber-300/20 rounded-full blur-3xl -z-10"></div>
+      <div className="fixed bottom-20 left-20 w-80 h-80 bg-gradient-to-tr from-amber-100/20 to-yellow-300/20 rounded-full blur-3xl -z-10"></div>
+      
+      {/* Back button */}
+      <motion.button 
+        onClick={() => navigate(-1)}
+        className="mb-6 flex items-center text-neutral-600 dark:text-neutral-300 hover:text-amber-500 dark:hover:text-amber-400 transition-colors bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-neutral-100/80 dark:border-neutral-700/80"
+        whileHover={{ x: -5, backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <FaArrowLeft className="mr-2" />
+        <span>Quay lại</span>
+      </motion.button>
+      
+      <motion.div 
+        className="bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden border border-neutral-100/80 dark:border-neutral-700/80"
+        initial={{ y: 20 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 100 }}
+      >
+        {/* Cover Image */}
+        <div className="relative">
+          <div className="h-64 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 relative overflow-hidden">
+            <motion.div 
+              className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1576092768241-dec231879fc3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80')] bg-cover bg-center opacity-30"
+              initial={{ scale: 1.1 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 1.5 }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+            </motion.div>
+            
+            <div className="absolute bottom-4 right-8 text-white flex items-center space-x-3">
+              {user.zodiacSign && (
+                <motion.div 
+                  className="flex items-center bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/30"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
+                >
+                  <span className="mr-2 text-2xl">{getZodiacEmoji(user.zodiacSign)}</span>
+                  <span className="font-medium">{user.zodiacSign}</span>
+                </motion.div>
+              )}
+            </div>
+          </div>
+          
+          {/* Profile Section with Avatar and Name side by side */}
+          <div className="relative px-8 pb-6">
+            <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-10">
+              {/* Avatar */}
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, type: 'spring', stiffness: 100 }}
+              >
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl border-4 border-white dark:border-neutral-800 overflow-hidden bg-white shadow-xl relative group">
+                  {user.avatar ? (
+                    <img 
+                      src={user.avatar} 
+                      alt={user.fullName} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-500 text-white text-5xl font-bold">
+                      {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+                    <span className="text-white text-sm font-medium">Xem ảnh</span>
+                  </div>
+                </div>
+              </motion.div>
+              
+              {/* User Name and Bio */}
+              <motion.div 
+                className="flex-1 pt-4 md:pt-0"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, type: 'spring', stiffness: 100 }}
+              >
+                <motion.h1 
+                  className="text-3xl md:text-4xl font-bold text-neutral-800 dark:text-white mb-2 bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent"
+                >
+                  {user.fullName}
+                </motion.h1>
+                
+                <motion.p
+                  className="text-neutral-600 dark:text-neutral-300 mb-4 text-sm md:text-base max-w-2xl"
+                >
+                  {user.bio || "Chào mừng bạn đến với hồ sơ của tôi! Hãy kết nối để trò chuyện nhé."}
+                </motion.p>
+                
+                {/* Quick Info Badges */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {user.premium && (
+                    <div className="flex items-center text-sm text-yellow-800 bg-yellow-100/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-yellow-200">
+                      <FaCrown className="mr-1 text-yellow-600" />
+                      <span>Premium</span>
+                    </div>
+                  )}
+                  
+                  {user.verified && (
+                    <div className="flex items-center text-sm text-green-800 bg-green-100/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-green-200">
+                      <FaUserCheck className="mr-1 text-green-600" />
+                      <span>Đã xác minh</span>
+                    </div>
+                  )}
+                
+                  {user.birthDate && (
+                    <div className="flex items-center text-sm text-neutral-600 dark:text-neutral-300 bg-white/80 dark:bg-neutral-700/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-neutral-100/80 dark:border-neutral-600/80">
+                      <FaBirthdayCake className="mr-1 text-amber-500" />
+                      <span>{calculateAge(user.birthDate)} tuổi</span>
+                    </div>
+                  )}
+                  
+                  {user.city && (
+                    <div className="flex items-center text-sm text-neutral-600 dark:text-neutral-300 bg-white/80 dark:bg-neutral-700/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-neutral-100/80 dark:border-neutral-600/80">
+                      <FaMapMarkerAlt className="mr-1 text-amber-500" />
+                      <span>{user.city}</span>
+                    </div>
+                  )}
+                  
+                  {user.occupation && (
+                    <div className="flex items-center text-sm text-neutral-600 dark:text-neutral-300 bg-white/80 dark:bg-neutral-700/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-neutral-100/80 dark:border-neutral-600/80">
+                      <FaBriefcase className="mr-1 text-amber-500" />
+                      <span>{user.occupation}</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Photo Gallery */}
+        {user.photos && user.photos.length > 0 && (
+          <motion.div 
+            className="px-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <h3 className="text-xl font-semibold text-neutral-800 dark:text-white mb-4">
+              Bộ sưu tập ảnh
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {user.photos.map((photo, index) => (
+                <div 
+                  key={index} 
+                  className="aspect-square rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer"
+                >
+                  <img 
+                    src={photo} 
+                    alt={`${user.fullName} - Ảnh ${index + 1}`} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+        
+        {/* User Info */}
+        <div className="pb-8 px-8">
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5"
+              variants={containerVariants}
+            >
+              
+              {user.distance !== undefined && (
+                <motion.div 
+                  className="flex items-center text-neutral-600 dark:text-neutral-300 bg-white/90 dark:bg-neutral-700/90 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-neutral-100/80 dark:border-neutral-600/80 hover:shadow-md transition-all"
+                  variants={itemVariants}
+                  whileHover={{ y: -3, boxShadow: '0 8px 16px -2px rgba(0, 0, 0, 0.1)' }}
+                >
+                  <div className="bg-amber-100 dark:bg-amber-900/30 p-3 rounded-lg mr-3">
+                    <FaMapMarkerAlt className="text-amber-500 text-xl" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-neutral-800 dark:text-white">Khoảng cách</h3>
+                    <p className="text-sm">
+                      {user.distance < 1000 
+                        ? `${Math.round(user.distance)} mét` 
+                        : `${(user.distance / 1000).toFixed(1)} km`}
+                    </p>
+                  </div>
+                </motion.div>
+              )}                     
+            </motion.div>
+          </motion.div>
+          
+          {/* Tabs - Modern 2025 Style */}
+          <div className="mb-8 relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-100/20 via-yellow-200/20 to-amber-100/20 blur-xl -z-10 rounded-xl"></div>
+            <div className="backdrop-blur-sm bg-white/70 dark:bg-neutral-800/70 rounded-2xl p-2 shadow-lg border border-neutral-100/80 dark:border-neutral-700/80">
+              <div className="flex flex-wrap gap-2 justify-between">
+                <motion.button
+                  onClick={() => setActiveTab('basic')}
+                  className={`relative py-3 px-4 rounded-xl font-medium transition-all duration-300 flex items-center ${
+                    activeTab === 'basic' 
+                      ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md' 
+                      : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100/80 dark:hover:bg-neutral-700/50'
+                  }`}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {activeTab === 'basic' && (
+                    <motion.div
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 -z-10"
+                      layoutId="activeTab"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                  <span className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${
+                      activeTab === 'basic' 
+                        ? 'bg-white/20' 
+                        : 'bg-amber-100 dark:bg-amber-900/30'
+                    }`}>
+                      <FaUser className={`${
+                        activeTab === 'basic' 
+                          ? 'text-white' 
+                          : 'text-amber-500'
+                      }`} />
+                    </div>
+                    <span>Thông tin cơ bản</span>
+                  </span>
+                </motion.button>
+                
+                <motion.button
+                  onClick={() => setActiveTab('tea')}
+                  className={`relative py-3 px-4 rounded-xl font-medium transition-all duration-300 flex items-center ${
+                    activeTab === 'tea' 
+                      ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md' 
+                      : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100/80 dark:hover:bg-neutral-700/50'
+                  }`}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {activeTab === 'tea' && (
+                    <motion.div
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 -z-10"
+                      layoutId="activeTab"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                  <span className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${
+                      activeTab === 'tea' 
+                        ? 'bg-white/20' 
+                        : 'bg-amber-100 dark:bg-amber-900/30'
+                    }`}>
+                      <FaMugHot className={`${
+                        activeTab === 'tea' 
+                          ? 'text-white' 
+                          : 'text-amber-500'
+                      }`} />
+                    </div>
+                    <span>Sở thích trà sữa</span>
+                  </span>
+                </motion.button>
+                
+                <motion.button
+                  onClick={() => setActiveTab('personal')}
+                  className={`relative py-3 px-4 rounded-xl font-medium transition-all duration-300 flex items-center ${
+                    activeTab === 'personal' 
+                      ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md' 
+                      : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100/80 dark:hover:bg-neutral-700/50'
+                  }`}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {activeTab === 'personal' && (
+                    <motion.div
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 -z-10"
+                      layoutId="activeTab"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                  <span className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${
+                      activeTab === 'personal' 
+                        ? 'bg-white/20' 
+                        : 'bg-amber-100 dark:bg-amber-900/30'
+                    }`}>
+                      <FaQuoteLeft className={`${
+                        activeTab === 'personal' 
+                          ? 'text-white' 
+                          : 'text-amber-500'
+                      }`} />
+                    </div>
+                    <span>Thông tin cá nhân</span>
+                  </span>
+                </motion.button>
+                
+                <motion.button
+                  onClick={() => setActiveTab('lifestyle')}
+                  className={`relative py-3 px-4 rounded-xl font-medium transition-all duration-300 flex items-center ${
+                    activeTab === 'lifestyle' 
+                      ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md' 
+                      : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100/80 dark:hover:bg-neutral-700/50'
+                  }`}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {activeTab === 'lifestyle' && (
+                    <motion.div
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 -z-10"
+                      layoutId="activeTab"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                  <span className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${
+                      activeTab === 'lifestyle' 
+                        ? 'bg-white/20' 
+                        : 'bg-amber-100 dark:bg-amber-900/30'
+                    }`}>
+                      <FaRunning className={`${
+                        activeTab === 'lifestyle' 
+                          ? 'text-white' 
+                          : 'text-amber-500'
+                      }`} />
+                    </div>
+                    <span>Lối sống</span>
+                  </span>
+                </motion.button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Tab Content */}
+          <div>
+            {/* Basic Info Tab */}
+            {activeTab === 'basic' && (
+              <div
+                key="basic"
+                className="relative"
+              >
+                {/* Background decorative elements */}
+                <div className="absolute -top-10 -right-10 w-64 h-64 bg-gradient-to-br from-yellow-200/20 to-amber-300/20 rounded-full blur-3xl -z-10"></div>
+                <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-gradient-to-tr from-amber-100/20 to-yellow-300/20 rounded-full blur-3xl -z-10"></div>
+                
+                {/* Main content */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Personal Info - Left Column */}
+                  <div className="md:col-span-7 space-y-6">
+                    {/* Thông tin cá nhân */}
+                    <motion.div 
+                      className="backdrop-blur-sm bg-white/80 dark:bg-neutral-800/80 p-6 rounded-2xl border border-neutral-100/80 dark:border-neutral-700/80 shadow-lg"
+                      whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    >
+                      <div className="flex items-center mb-5">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-md">
+                          <FaUser className="text-white text-lg" />
+                        </div>
+                        <h3 className="ml-4 text-xl font-bold text-neutral-800 dark:text-white">Thông tin cá nhân</h3>
+                      </div>
+                      
+                      <div className="space-y-5">
+                        {user.gender && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                              <span className="text-amber-500 text-lg">👤</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Giới tính</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{getGenderText(user.gender)}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {user.birthDate && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                              <span className="text-amber-500 text-lg">🎂</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Tuổi</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{calculateAge(user.birthDate)} tuổi</p>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {user.height && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                              <span className="text-amber-500 text-lg">📏</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Chiều cao</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{user.height} cm</p>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {user.zodiacSign && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                              <span className="text-amber-500 text-lg">{getZodiacEmoji(user.zodiacSign)}</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Cung hoàng đạo</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{user.zodiacSign}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
+                    </motion.div>
+                    
+                    {/* Vị trí */}
+                    <motion.div 
+                      className="backdrop-blur-sm bg-white/80 dark:bg-neutral-800/80 p-6 rounded-2xl border border-neutral-100/80 dark:border-neutral-700/80 shadow-lg"
+                      whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    >
+                      <div className="flex items-center mb-5">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-md">
+                          <FaMapMarkerAlt className="text-white text-lg" />
+                        </div>
+                        <h3 className="ml-4 text-xl font-bold text-neutral-800 dark:text-white">Vị trí</h3>
+                      </div>
+                      
+                      <div className="space-y-5">
+                        {user.city && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center">
+                              <span className="text-teal-500 text-lg">🏙️</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Thành phố</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{user.city}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {user.distance !== undefined && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center">
+                              <span className="text-teal-500 text-lg">📍</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Khoảng cách</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">
+                                {user.distance < 1000 
+                                  ? `${Math.round(user.distance)} m` 
+                                  : `${(user.distance / 1000).toFixed(1)} km`}
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {/* Interactive map placeholder */}
+                        {user.city && (
+                          <div className="mt-4 relative h-32 rounded-xl overflow-hidden bg-teal-50 dark:bg-teal-900/30">
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <p className="text-sm text-teal-600 dark:text-teal-300">Bản đồ khu vực {user.city}</p>
+                            </div>
+                            <div className="absolute bottom-2 right-2 bg-white dark:bg-neutral-800 rounded-lg shadow-md px-3 py-1.5">
+                              <p className="text-xs font-medium text-teal-600 dark:text-teal-400">Xem bản đồ</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </div>
+                  
+                  {/* Right Column */}
+                  <div className="md:col-span-5 space-y-6">
+                    {/* Thông tin nghề nghiệp */}
+                    <motion.div 
+                      className="backdrop-blur-sm bg-white/80 dark:bg-neutral-800/80 p-6 rounded-2xl border border-neutral-100/80 dark:border-neutral-700/80 shadow-lg"
+                      whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    >
+                      <div className="flex items-center mb-5">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-md">
+                          <FaBriefcase className="text-white text-lg" />
+                        </div>
+                        <h3 className="ml-4 text-xl font-bold text-neutral-800 dark:text-white">Công việc & Học vấn</h3>
+                      </div>
+                      
+                      <div className="space-y-5">
+                        {user.occupation && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                              <span className="text-indigo-500 text-lg">💼</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Nghề nghiệp</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{user.occupation}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {user.company && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                              <span className="text-indigo-500 text-lg">🏢</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Công ty</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{user.company}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {user.education && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                              <span className="text-indigo-500 text-lg">🎓</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Học vấn</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{user.education}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {user.school && (
+                          <motion.div 
+                            className="flex items-center"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 }}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                              <span className="text-indigo-500 text-lg">🏫</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Trường</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">{user.school}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
+                    </motion.div>
+                    
+                    {/* Tìm kiếm */}
+                    {user.lookingFor && (
+                      <motion.div 
+                        className="backdrop-blur-sm bg-white/80 dark:bg-neutral-800/80 p-6 rounded-2xl border border-neutral-100/80 dark:border-neutral-700/80 shadow-lg"
+                        whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      >
+                        <div className="flex items-center mb-5">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shadow-md">
+                            <FaHeart className="text-white text-lg" />
+                          </div>
+                          <h3 className="ml-4 text-xl font-bold text-neutral-800 dark:text-white">Đang tìm kiếm</h3>
+                        </div>
+                        
+                        <div className="bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-900/20 dark:to-pink-900/20 p-5 rounded-xl border border-pink-100/80 dark:border-pink-800/30">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-neutral-800/80 flex items-center justify-center shadow-sm">
+                              <span className="text-pink-500 text-lg">
+                                {user.lookingFor === 'relationship' ? '❤️' :
+                                 user.lookingFor === 'friendship' ? '🤝' :
+                                 user.lookingFor === 'casual' ? '🌟' :
+                                 user.lookingFor === 'marriage' ? '💍' :
+                                 user.lookingFor === 'not-sure' ? '❓' : '👋'}
+                              </span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs font-medium text-pink-600 dark:text-pink-300 uppercase tracking-wider">Mục tiêu</p>
+                              <p className="text-neutral-800 dark:text-white font-medium">
+                                {user.lookingFor === 'relationship' ? 'Mối quan hệ nghiêm túc' :
+                                 user.lookingFor === 'friendship' ? 'Tình bạn' :
+                                 user.lookingFor === 'casual' ? 'Hẹn hò không ràng buộc' :
+                                 user.lookingFor === 'marriage' ? 'Hướng đến hôn nhân' :
+                                 user.lookingFor === 'not-sure' ? 'Chưa chắc chắn' : user.lookingFor}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Compatibility indicator */}
+                        <div className="mt-5">
+                          <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Độ tương hợp</p>
+                          <div className="h-2 bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
+                            <motion.div 
+                              className="h-full bg-gradient-to-r from-yellow-400 to-pink-500"
+                              initial={{ width: 0 }}
+                              animate={{ width: '85%' }}
+                              transition={{ delay: 0.5, duration: 1.5, ease: "easeOut" }}
+                            ></motion.div>
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            <span className="text-xs text-neutral-500 dark:text-neutral-400">0%</span>
+                            <span className="text-xs font-medium text-pink-500">85%</span>
+                            <span className="text-xs text-neutral-500 dark:text-neutral-400">100%</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Personal Info Tab */}
+            {activeTab === 'personal' && (
+              <div
+                key="personal"
+              >
+                {/* Bio */}
+                {user.bio && (
+                  <div className="mb-8">
+                    <h2 className="text-lg font-semibold mb-3 text-neutral-800 flex items-center">
+                      <FaQuoteLeft className="mr-2 text-yellow-500 text-sm" />
+                      Giới thiệu
+                    </h2>
+                    <div className="bg-neutral-50 p-4 rounded-xl relative">
+                      <p className="text-neutral-700 leading-relaxed">
+                        {showFullBio || user.bio.length <= 150 
+                          ? user.bio 
+                          : `${user.bio.substring(0, 150)}...`}
+                      </p>
+                      {user.bio.length > 150 && (
+                        <button 
+                          onClick={() => setShowFullBio(!showFullBio)}
+                          className="text-yellow-600 hover:text-yellow-700 text-sm font-medium mt-2"
+                        >
+                          {showFullBio ? 'Ẩn bớt' : 'Xem thêm'}
+                        </button>
+                      )}
+                      <FaQuoteRight className="absolute bottom-2 right-2 text-yellow-200 text-sm" />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Hobbies */}
+                {user.hobbies?.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="text-lg font-semibold mb-3 text-neutral-800 flex items-center">
+                      <FaHeart className="mr-2 text-yellow-500" />
+                      Sở thích
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {user.hobbies.map(hobby => (
+                        <motion.span 
+                          key={hobby} 
+                          className="px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-full text-sm border border-yellow-100 shadow-sm"
+                          whileHover={{ scale: 1.05, backgroundColor: '#FEF3C7' }}
+                        >
+                          {hobby}
+                        </motion.span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Languages */}
+                {user.languages?.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="text-lg font-semibold mb-3 text-neutral-800 flex items-center">
+                      <FaLanguage className="mr-2 text-yellow-500" />
+                      Ngôn ngữ
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {user.languages.map(language => (
+                        <motion.span 
+                          key={language} 
+                          className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm border border-blue-100 shadow-sm"
+                          whileHover={{ scale: 1.05, backgroundColor: '#EFF6FF' }}
+                        >
+                          {language}
+                        </motion.span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tea Tab */}
+            {activeTab === 'tea' && (
+              <div
+                key="tea"
+              >
+                {/* Tea Preferences */}
+                {(user.teaPreferences?.length > 0 || user.favoriteTea) ? (
+                  <div>
+                    {user.favoriteTea && (
+                      <div className="mb-6">
+                        <h3 className="font-medium text-neutral-700 mb-2 flex items-center">
+                          <FaStar className="mr-2 text-yellow-500" />
+                          Trà sữa yêu thích:
+                        </h3>
+                        <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
+                          <p className="text-yellow-800 font-medium">{user.favoriteTea}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {user.teaPreferences?.length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="font-medium text-neutral-700 mb-2">Loại trà ưa thích:</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {user.teaPreferences.map(tea => (
+                            <motion.span 
+                              key={tea} 
+                              className="px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-full text-sm shadow-sm"
+                              whileHover={{ scale: 1.05, backgroundColor: '#FEF3C7' }}
+                            >
+                              {tea}
+                            </motion.span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {user.toppings?.length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="font-medium text-neutral-700 mb-2">Topping yêu thích:</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {user.toppings.map(topping => (
+                            <motion.span 
+                              key={topping} 
+                              className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm shadow-sm"
+                              whileHover={{ scale: 1.05, backgroundColor: '#FEF3C7' }}
+                            >
+                              {topping}
+                            </motion.span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {user.sugarLevel && (
+                        <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+                          <h3 className="font-medium text-neutral-700 mb-1">Độ ngọt:</h3>
+                          <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
+                            <div 
+                              className="bg-yellow-500 h-2.5 rounded-full" 
+                              style={{ width: user.sugarLevel }}
+                            ></div>
+                          </div>
+                          <p className="text-neutral-600 mt-1 text-right">{user.sugarLevel}</p>
+                        </div>
+                      )}
+                      
+                      {user.iceLevel && (
+                        <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+                          <h3 className="font-medium text-neutral-700 mb-1">Đá:</h3>
+                          <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
+                            <div 
+                              className="bg-blue-500 h-2.5 rounded-full" 
+                              style={{ width: user.iceLevel }}
+                            ></div>
+                          </div>
+                          <p className="text-neutral-600 mt-1 text-right">{user.iceLevel}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FaMugHot className="mx-auto text-4xl text-neutral-300 mb-3" />
+                    <p className="text-neutral-500">Chưa có thông tin về sở thích trà sữa</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Lifestyle Tab */}
+            {activeTab === 'lifestyle' && (
+              <div
+                key="lifestyle"
+              >
+                {/* Lifestyle */}
+                {user.lifestyle && Object.values(user.lifestyle).some(value => value) ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {user.lifestyle.smoking && (
+                      <div 
+                        className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 shadow-sm"
+                      >
+                        <h3 className="font-medium text-neutral-700 mb-2 flex items-center">
+                          <FaSmoking className="mr-2 text-neutral-500" />
+                          Hút thuốc:
+                        </h3>
+                        <p className="text-neutral-600 bg-white p-2 rounded-lg">{getLifestyleText('smoking', user.lifestyle.smoking)}</p>
+                      </div>
+                    )}
+                    
+                    {user.lifestyle.drinking && (
+                      <motion.div 
+                        className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 shadow-sm"
+                        whileHover={{ y: -5, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      >
+                        <h3 className="font-medium text-neutral-700 mb-2 flex items-center">
+                          <FaGlassCheers className="mr-2 text-neutral-500" />
+                          Uống rượu:
+                        </h3>
+                        <p className="text-neutral-600 bg-white p-2 rounded-lg">{getLifestyleText('drinking', user.lifestyle.drinking)}</p>
+                      </motion.div>
+                    )}
+                    
+                    {user.lifestyle.exercise && (
+                      <motion.div 
+                        className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 shadow-sm"
+                        whileHover={{ y: -5, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      >
+                        <h3 className="font-medium text-neutral-700 mb-2 flex items-center">
+                          <FaRunning className="mr-2 text-neutral-500" />
+                          Tập thể dục:
+                        </h3>
+                        <p className="text-neutral-600 bg-white p-2 rounded-lg">{getLifestyleText('exercise', user.lifestyle.exercise)}</p>
+                      </motion.div>
+                    )}
+                    
+                    {user.lifestyle.diet && (
+                      <motion.div 
+                        className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 shadow-sm"
+                        whileHover={{ y: -5, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                      >
+                        <h3 className="font-medium text-neutral-700 mb-2 flex items-center">
+                          <FaUtensils className="mr-2 text-neutral-500" />
+                          Chế độ ăn:
+                        </h3>
+                        <p className="text-neutral-600 bg-white p-2 rounded-lg">{getLifestyleText('diet', user.lifestyle.diet)}</p>
+                      </motion.div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FaUser className="mx-auto text-4xl text-neutral-300 mb-3" />
+                    <p className="text-neutral-500">Chưa có thông tin về lối sống</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+export default UserProfile;

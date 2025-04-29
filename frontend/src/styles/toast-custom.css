@@ -1,0 +1,247 @@
+/* Custom Toast Styles */
+.toast-container-custom {
+  --toastify-color-info: #3498db;
+  --toastify-color-success: #10b981;
+  --toastify-color-warning: #f59e0b;
+  --toastify-color-error: #ef4444;
+  --toastify-icon-color-info: var(--toastify-color-info);
+  --toastify-icon-color-success: var(--toastify-color-success);
+  --toastify-icon-color-warning: var(--toastify-color-warning);
+  --toastify-icon-color-error: var(--toastify-color-error);
+  --yellow-primary: #f59e0b;
+  --yellow-secondary: #fbbf24;
+  margin-top: 70px !important; /* Đảm bảo không che navbar */
+  z-index: 9999 !important; /* Đảm bảo hiển thị trên các phần tử khác */
+  width: 360px !important; /* Đặt chiều rộng cố định cho tất cả toast */
+}
+
+.toast-custom {
+  border-radius: 16px !important;
+  padding: 16px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: 'Roboto', sans-serif;
+  min-height: 72px !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: all 0.3s ease-in-out !important;
+  margin-bottom: 16px !important;
+  max-width: 100% !important;
+}
+
+.toast-custom:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.Toastify__toast--info {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.9)) !important;
+  border-left: 6px solid #2563eb !important;
+}
+
+.Toastify__toast--success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.9)) !important;
+  border-left: 6px solid #059669 !important;
+}
+
+.Toastify__toast--warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.9)) !important;
+  border-left: 6px solid #d97706 !important;
+}
+
+.Toastify__toast--error {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.9)) !important;
+  border-left: 6px solid #dc2626 !important;
+}
+
+.toast-body-custom {
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  color: white !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.5 !important;
+  letter-spacing: 0.01em !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.toast-progress-custom {
+  height: 4px !important;
+  opacity: 0.8 !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  bottom: 0 !important;
+  border-radius: 0 0 16px 16px !important;
+}
+
+.Toastify__close-button {
+  color: white !important;
+  opacity: 0.8 !important;
+  align-self: flex-start !important;
+  margin-top: 2px !important;
+  padding: 4px !important;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1 !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 50% !important;
+}
+
+.Toastify__toast-icon {
+  margin-right: 16px !important;
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* Animation for toasts */
+@keyframes toast-pop {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-exit {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
+/* .Toastify__toast {
+  animation: toast-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+  animation-fill-mode: both !important;
+  will-change: transform, opacity !important;
+} */
+
+.Toastify__toast--rtl {
+  direction: rtl;
+}
+
+/* Hiệu ứng đóng cho toast */
+.Toastify__toast-exit {
+  animation: toast-exit 0.3s ease-in forwards !important;
+}
+
+/* Hiệu ứng cho các loại transition khác nhau */
+.Toastify__flip-enter,
+.Toastify__flip-exit {
+  animation-fill-mode: both !important;
+  backface-visibility: hidden !important;
+  transform-style: preserve-3d !important;
+}
+
+.Toastify__zoom-enter,
+.Toastify__zoom-exit {
+  animation-fill-mode: both !important;
+  transform-origin: center !important;
+}
+
+.Toastify__slide-enter,
+.Toastify__slide-exit {
+  animation-fill-mode: both !important;
+}
+
+.Toastify__bounce-enter,
+.Toastify__bounce-exit {
+  animation-fill-mode: both !important;
+}
+
+/* Custom styles for message notifications */
+.toast-message-custom {
+  background: linear-gradient(135deg, var(--yellow-primary), var(--yellow-secondary)) !important;
+  border-left: 6px solid var(--yellow-primary) !important;
+  padding: 12px !important;
+  max-width: 360px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Add a special style for new message notifications */
+.toast-message-notification {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  padding: 8px !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+}
+
+.toast-message-notification .sender-avatar {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 50% !important;
+  margin-right: 16px !important;
+  border: 2px solid white !important;
+  object-fit: cover !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.toast-message-notification .message-content {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-grow: 1 !important;
+  overflow: hidden !important;
+  padding-right: 8px !important;
+}
+
+.toast-message-notification .sender-name {
+  font-weight: 600 !important;
+  margin-bottom: 6px !important;
+  color: #1f2937 !important;
+  font-size: 16px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5) !important;
+}
+
+.toast-message-notification .message-text {
+  color: #4b5563 !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 240px !important;
+  font-weight: 400 !important;
+}
+
+/* Add a pulse animation for the avatar */
+@keyframes pulse-border {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.toast-message-notification .sender-avatar {
+  animation: pulse-border 2s infinite;
+}
+
+/* Thêm hiệu ứng hover cho thông báo tin nhắn */
+.toast-message-notification:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  cursor: pointer !important;
+  transform: translateY(-2px) !important;
+  transition: all 0.2s ease-in-out !important;
+}
