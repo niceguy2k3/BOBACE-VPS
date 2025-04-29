@@ -171,7 +171,7 @@ const Landing = () => {
               transition={{ delay: 0.8, duration: 0.8 }}
             >
               <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-md">
-                <p className="text-3xl font-bold text-yellow-500">500+</p>
+                <p className="text-3xl font-bold text-yellow-500">200+</p>
                 <p className="text-neutral-600">Người dùng thử nghiệm</p>
               </div>
               <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-md">
