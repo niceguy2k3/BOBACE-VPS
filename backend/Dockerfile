@@ -7,4 +7,4 @@ COPY . .
 RUN npm install --legacy-peer-deps
 ENV PORT=3000
 EXPOSE 3000
-CMD ["node", "app.js"]
+CMD ["node", "src/app.js"]
