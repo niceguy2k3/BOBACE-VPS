@@ -181,14 +181,34 @@ const Register = () => {
     try {
       setUploadingAvatar(true);
       
-      const formData = new FormData();
-      formData.append('avatar', file);
-      
-      const response = await axios.post(`${API_URL}/api/upload/register/avatar`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      // Convert file to base64 using Promise
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            resolve(reader.result);
+          } else {
+            reject(new Error('Failed to read file'));
+          }
+        };
+        reader.onerror = (error) => {
+          reject(error);
+        };
+        reader.readAsDataURL(file);
       });
+      
+      console.log('Base64 conversion successful, length:', base64.length);
+      
+      // Upload to backend
+      const response = await axios.post(`${API_URL}/api/upload/register/avatar`, 
+        { avatar: base64 },
+        { 
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000 // 60 seconds timeout
+        }
+      );
+      
+      console.log('Upload response:', response.data);
       
       setFormData(prev => ({
         ...prev,
@@ -198,7 +218,19 @@ const Register = () => {
       showSuccessToast('Tải lên ảnh đại diện thành công');
     } catch (error) {
       console.error('Avatar upload error:', error);
-      showErrorToast(error.response?.data?.message || 'Không thể tải lên ảnh đại diện');
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data
+      });
+      
+      if (error.code === 'ECONNABORTED') {
+        showErrorToast('Quá thời gian tải lên. Vui lòng thử lại với ảnh nhỏ hơn.');
+      } else if (error.message === 'Network Error') {
+        showErrorToast('Lỗi kết nối. Vui lòng kiểm tra lại kết nối mạng và thử lại.');
+      } else {
+        showErrorToast(error.response?.data?.message || 'Không thể tải lên ảnh đại diện');
+      }
     } finally {
       setUploadingAvatar(false);
     }
@@ -233,16 +265,36 @@ const Register = () => {
     try {
       setUploadingPhotos(true);
       
-      const formDataObj = new FormData();
-      files.forEach(file => {
-        formDataObj.append('images', file);
+      // Convert all files to base64
+      const base64Promises = files.map((file, index) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (reader.result) {
+              resolve(reader.result);
+            } else {
+              reject(new Error(`Failed to read file ${index + 1}`));
+            }
+          };
+          reader.onerror = (error) => {
+            reject(new Error(`Error reading file ${index + 1}: ${error.message}`));
+          };
+          reader.readAsDataURL(file);
+        });
       });
       
-      const response = await axios.post(`${API_URL}/api/upload/register/photos`, formDataObj, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      const base64Images = await Promise.all(base64Promises);
+      console.log('Base64 conversion successful, images count:', base64Images.length);
+      
+      const response = await axios.post(`${API_URL}/api/upload/register/photos`, 
+        { images: base64Images },
+        { 
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 120000 // 120 seconds timeout for multiple images
         }
-      });
+      );
+      
+      console.log('Upload response:', response.data);
       
       setFormData(prev => ({
         ...prev,
@@ -252,7 +304,19 @@ const Register = () => {
       showSuccessToast('Tải lên hình ảnh thành công');
     } catch (error) {
       console.error('Photos upload error:', error);
-      showErrorToast(error.response?.data?.message || 'Không thể tải lên hình ảnh');
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data
+      });
+      
+      if (error.code === 'ECONNABORTED') {
+        showErrorToast('Quá thời gian tải lên. Vui lòng thử lại với ảnh nhỏ hơn.');
+      } else if (error.message === 'Network Error') {
+        showErrorToast('Lỗi kết nối. Vui lòng kiểm tra lại kết nối mạng và thử lại.');
+      } else {
+        showErrorToast(error.response?.data?.message || 'Không thể tải lên hình ảnh');
+      }
     } finally {
       setUploadingPhotos(false);
     }

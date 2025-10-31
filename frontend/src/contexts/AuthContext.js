@@ -262,23 +262,62 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateAvatar = async (formData) => {
+  const updateAvatar = async (data) => {
     try {
       setError(null);
       const token = localStorage.getItem('token');
       
+      // Support both old FormData and new { avatarUrl: base64 } format
+      let requestData;
+      let contentType = 'application/json';
+      
+      if (data instanceof FormData || (data && data.avatar)) {
+        // Old format with FormData or { avatar: file }
+        // Convert to base64 if needed
+        if (data instanceof FormData) {
+          const file = data.get('avatar');
+          if (file instanceof File) {
+            const base64 = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+            requestData = { avatarUrl: base64 };
+          } else {
+            requestData = { avatarUrl: data.get('avatarUrl') || data.get('avatar') };
+          }
+        } else if (data.avatar instanceof File) {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(data.avatar);
+          });
+          requestData = { avatarUrl: base64 };
+        } else {
+          requestData = { avatarUrl: data.avatarUrl || data.avatar };
+        }
+      } else {
+        // New format: { avatarUrl: base64 }
+        requestData = { avatarUrl: data.avatarUrl || data };
+      }
+      
       const config = {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': contentType,
           Authorization: `Bearer ${token}`
         }
       };
       
-      const response = await axios.put(`${API_URL}/api/users/avatar`, formData, config);
-      setCurrentUser({
-        ...currentUser,
+      // Use upload/avatar endpoint instead of users/avatar
+      const response = await axios.post(`${API_URL}/api/upload/avatar`, requestData, config);
+      
+      setCurrentUser(prev => ({
+        ...prev,
         avatar: response.data.avatar
-      });
+      }));
+      
       return response.data;
     } catch (error) {
       setError(error.response?.data?.message || 'Đã xảy ra lỗi khi cập nhật ảnh đại diện');
@@ -545,20 +584,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Upload verification photo
-  const uploadVerificationPhoto = async (formData) => {
+  // Upload verification photo (expects File object, converts to base64)
+  const uploadVerificationPhoto = async (file) => {
     try {
       setError(null);
       const token = localStorage.getItem('token');
       
+      // Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      
       const config = {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'application/json'
         }
       };
       
-      const response = await axios.post(`${API_URL}/api/upload/verification`, formData, config);
+      const response = await axios.post(`${API_URL}/api/upload/verification`, 
+        { verification: base64 }, 
+        config
+      );
       
       // Cập nhật thông tin người dùng hiện tại
       if (response.data && response.data.verificationPhoto) {

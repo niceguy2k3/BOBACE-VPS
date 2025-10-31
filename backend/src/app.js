@@ -64,15 +64,40 @@ console.log('Socket.io initialized successfully');
 // Middlewares
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Also allow local network IPs
+    if (origin.includes('192.168.') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    console.warn(`Origin ${origin} not allowed`);
     callback(new Error(`Origin ${origin} not allowed`));
   },
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Increase JSON body size limit to 50MB to handle base64 images
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Request logging middleware for debugging (after body parsing)
+app.use((req, res, next) => {
+  if (req.path.includes('/upload') || req.path.includes('/register')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    console.log('Content-Type:', req.get('Content-Type'));
+    console.log('Body keys:', req.body ? Object.keys(req.body) : 'no body');
+    if (req.body && req.body.avatar) {
+      console.log('Avatar length:', req.body.avatar.length);
+    }
+    if (req.body && req.body.images) {
+      console.log('Images count:', Array.isArray(req.body.images) ? req.body.images.length : 'not array');
+    }
+  }
+  next();
+});
 
 // Áp dụng middleware bảo mật
 app.use(securityMiddleware);

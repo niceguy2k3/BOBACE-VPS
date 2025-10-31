@@ -1,15 +1,54 @@
 const Report = require('../models/report.model');
 const User = require('../models/user.model');
 const mongoose = require('mongoose');
-const cloudinary = require('../config/cloudinary');
-const { uploadToCloudinary } = require('../utils/cloudinaryHelper');
+
+/**
+ * Validate base64 image string
+ */
+const validateBase64Image = (base64String) => {
+  if (!base64String || typeof base64String !== 'string') {
+    return { valid: false, error: 'Base64 string không hợp lệ' };
+  }
+
+  const dataUrlPattern = /^data:image\/(jpeg|jpg|png|gif|webp);base64,/i;
+  const base64Pattern = /^[A-Za-z0-9+/]+=*$/;
+  
+  let base64Data = base64String;
+  let mimeType = 'image/jpeg';
+
+  if (base64String.includes(',')) {
+    const matches = base64String.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (matches) {
+      mimeType = `image/${matches[1]}`;
+      base64Data = matches[2];
+    }
+  }
+
+  if (!base64Pattern.test(base64Data)) {
+    return { valid: false, error: 'Định dạng base64 không hợp lệ' };
+  }
+
+  const sizeInBytes = (base64Data.length * 3) / 4;
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  
+  if (sizeInBytes > maxSize) {
+    return { valid: false, error: 'Kích thước ảnh vượt quá 5MB' };
+  }
+
+  const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  if (!validMimeTypes.includes(mimeType.toLowerCase())) {
+    return { valid: false, error: 'Định dạng ảnh không được hỗ trợ' };
+  }
+
+  return { valid: true };
+};
 
 /**
  * Tạo báo cáo mới
  */
 exports.createReport = async (req, res) => {
   try {
-    const { reportedUserId, type, reason, description } = req.body;
+    const { reportedUserId, type, reason, description, evidence } = req.body;
     const reporterId = req.user._id;
 
     // Kiểm tra người dùng bị báo cáo có tồn tại không
@@ -35,25 +74,18 @@ exports.createReport = async (req, res) => {
       evidence: []
     });
 
-    // Xử lý tải lên hình ảnh bằng chứng (nếu có)
-    if (req.files && req.files.evidence) {
-      console.log('Evidence files found:', req.files.evidence.length);
-      const evidenceFiles = Array.isArray(req.files.evidence) 
-        ? req.files.evidence 
-        : [req.files.evidence];
-
-      for (const file of evidenceFiles) {
-        try {
-          console.log('Uploading file to Cloudinary:', file.originalname);
-          const result = await uploadToCloudinary(file.path, 'reports');
-          console.log('Cloudinary upload result:', result.secure_url);
-          newReport.evidence.push(result.secure_url);
-        } catch (uploadError) {
-          console.error('Error uploading evidence:', uploadError);
+    // Xử lý bằng chứng dưới dạng base64 (nếu có)
+    if (evidence) {
+      const evidenceArray = Array.isArray(evidence) ? evidence : [evidence];
+      
+      for (const evidenceItem of evidenceArray) {
+        const validation = validateBase64Image(evidenceItem);
+        if (validation.valid) {
+          newReport.evidence.push(evidenceItem);
+        } else {
+          console.error('Invalid evidence image:', validation.error);
         }
       }
-    } else {
-      console.log('No evidence files found in request');
     }
 
     await newReport.save();
@@ -144,18 +176,16 @@ exports.updateReport = async (req, res) => {
       report.description = description;
     }
 
-    // Xử lý tải lên hình ảnh bằng chứng mới (nếu có)
-    if (req.files && req.files.evidence) {
-      const evidenceFiles = Array.isArray(req.files.evidence) 
-        ? req.files.evidence 
-        : [req.files.evidence];
-
-      for (const file of evidenceFiles) {
-        try {
-          const result = await uploadToCloudinary(file.path, 'reports');
-          report.evidence.push(result.secure_url);
-        } catch (uploadError) {
-          console.error('Error uploading evidence:', uploadError);
+    // Xử lý bằng chứng mới dưới dạng base64 (nếu có)
+    if (evidence) {
+      const evidenceArray = Array.isArray(evidence) ? evidence : [evidence];
+      
+      for (const evidenceItem of evidenceArray) {
+        const validation = validateBase64Image(evidenceItem);
+        if (validation.valid) {
+          report.evidence.push(evidenceItem);
+        } else {
+          console.error('Invalid evidence image:', validation.error);
         }
       }
     }

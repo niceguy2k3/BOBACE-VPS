@@ -78,11 +78,8 @@ const createSampleData = async () => {
         education: 'Đại học Sư phạm Hà Nội',
         interests: ['Đọc sách', 'Du lịch', 'Âm nhạc'],
         hobbies: ['Chơi piano', 'Nấu ăn', 'Yoga'],
-        photos: [
-          'https://res.cloudinary.com/dtzbug8nl/image/upload/v1713804000/hen-ho-tra-sua/sample/female1_1.jpg',
-          'https://res.cloudinary.com/dtzbug8nl/image/upload/v1713804000/hen-ho-tra-sua/sample/female1_2.jpg'
-        ],
-        avatar: 'https://res.cloudinary.com/dtzbug8nl/image/upload/v1713804000/hen-ho-tra-sua/sample/female1_1.jpg',
+        photos: [],
+        avatar: '',
         teaPreferences: ['Trà sữa trân châu đường đen', 'Trà đào', 'Trà sữa matcha'],
         sugarLevel: '50%',
         iceLevel: '30%',
@@ -295,7 +292,7 @@ const createSampleData = async () => {
         description: 'Người dùng này đã gửi tin nhắn quấy rối nhiều lần',
         status: 'chờ_xử_lý',
         createdAt: new Date(),
-        evidence: ['https://res.cloudinary.com/dtzbug8nl/image/upload/v1713804000/hen-ho-tra-sua/sample/evidence1.jpg']
+        evidence: []
       },
       {
         _id: mongoose.Types.ObjectId('62d5ec9af682fbd12a8952a2'),
@@ -317,7 +314,7 @@ const createSampleData = async () => {
         description: 'Hình ảnh không phù hợp trong hồ sơ',
         status: 'resolved',
         createdAt: new Date(Date.now() - 172800000), // 2 days ago
-        evidence: ['https://res.cloudinary.com/dtzbug8nl/image/upload/v1713804000/hen-ho-tra-sua/sample/evidence2.jpg'],
+        evidence: [],
         adminNotes: 'Đã yêu cầu người dùng thay đổi hình ảnh',
         resolution: 'Đã yêu cầu người dùng thay đổi hình ảnh và họ đã tuân thủ'
       }

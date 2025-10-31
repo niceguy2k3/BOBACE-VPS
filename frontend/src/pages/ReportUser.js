@@ -134,29 +134,35 @@ const ReportUser = () => {
       setSubmitting(true);
       const token = localStorage.getItem('token');
       
-      // Tạo form data để gửi file
-      const formData = new FormData();
-      formData.append('reportedUserId', userId);
-      formData.append('type', reportType);
-      formData.append('reason', reportReason);
-      formData.append('description', description);
-      
-      // Thêm các file hình ảnh vào form data
+      // Convert evidence files to base64
+      let evidenceBase64 = [];
       if (evidence.length > 0) {
-        console.log(`Adding ${evidence.length} evidence files to form data`);
-        evidence.forEach((file, index) => {
-          console.log(`Adding evidence file ${index + 1}:`, file.name);
-          formData.append('evidence', file);
+        console.log(`Converting ${evidence.length} evidence files to base64`);
+        const base64Promises = evidence.map(file => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
         });
-      } else {
-        console.log('No evidence files to upload');
+        evidenceBase64 = await Promise.all(base64Promises);
       }
       
-      console.log('Submitting report with form data');
-      const response = await axios.post(`${API_URL}/api/reports`, formData, {
+      // Prepare request data with base64 evidence
+      const requestData = {
+        reportedUserId: userId,
+        type: reportType,
+        reason: reportReason,
+        description: description,
+        evidence: evidenceBase64
+      };
+      
+      console.log('Submitting report with base64 evidence');
+      const response = await axios.post(`${API_URL}/api/reports`, requestData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'application/json'
         }
       });
       

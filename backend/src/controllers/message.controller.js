@@ -46,13 +46,16 @@ exports.createMessage = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const matchId = req.params.matchId;
-    const { content, messageType, imageUrl } = req.body;
+    const { content, messageType, imageUrl, imageBase64 } = req.body;
     
     // Validate input based on message type
     if (messageType === 'image') {
-      if (!imageUrl) {
-        return res.status(400).json({ message: 'URL hình ảnh không được để trống' });
+      // Accept either imageUrl (legacy) or imageBase64 (new)
+      const imageData = imageBase64 || imageUrl;
+      if (!imageData) {
+        return res.status(400).json({ message: 'Dữ liệu hình ảnh không được để trống' });
       }
+      // Store as base64
     } else {
       // For text and emoji messages
       if (!content) {
@@ -93,9 +96,10 @@ exports.createMessage = async (req, res, next) => {
       messageType: messageType || 'text'
     };
     
-    // Add content or imageUrl based on message type
+    // Add content or imageBase64/imageUrl based on message type
     if (messageType === 'image') {
-      messageData.imageUrl = imageUrl;
+      // Store base64 image (use imageBase64 if provided, otherwise use imageUrl)
+      messageData.imageUrl = imageBase64 || imageUrl;
     } else {
       messageData.content = content;
     }

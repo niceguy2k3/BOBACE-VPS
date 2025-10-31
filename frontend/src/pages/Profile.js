@@ -223,10 +223,12 @@ const Profile = () => {
       
       // Update avatar if provided and changed
       // Lưu ý: Nếu sử dụng ImageUploader, avatar sẽ được cập nhật trực tiếp
-      // và chỉ cần cập nhật qua API nếu người dùng nhập URL thủ công
-      if (formData.avatarUrl && formData.avatarUrl !== currentUser.avatar && 
-          formData.avatarUrl.startsWith('http') && !formData.avatarUrl.includes('cloudinary')) {
-        await updateAvatar({ avatarUrl: formData.avatarUrl });
+      // Với base64, không cần kiểm tra URL http nữa, chỉ cần kiểm tra khác nhau
+      if (formData.avatarUrl && formData.avatarUrl !== currentUser.avatar) {
+        // Nếu là base64 hoặc data URI, update luôn
+        if (formData.avatarUrl.startsWith('data:image/') || !formData.avatarUrl.startsWith('http')) {
+          await updateAvatar({ avatarUrl: formData.avatarUrl });
+        }
       }
       
         toast.success('Cập nhật hồ sơ thành công', {
@@ -1235,15 +1237,27 @@ const Profile = () => {
                               accept="image/jpeg,image/png,image/jpg"
                               onChange={(e) => {
                                 if (e.target.files && e.target.files[0]) {
-                                  const formData = new FormData();
-                                  formData.append('verification', e.target.files[0]);
+                                  const file = e.target.files[0];
                                   
-                                  // Gọi API tải lên ảnh xác minh
-                                  uploadVerificationPhoto(formData)
+                                  // Validate file
+                                  const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+                                  if (!validTypes.includes(file.type)) {
+                                    toast.error('Chỉ chấp nhận file PNG, JPG, JPEG');
+                                    return;
+                                  }
+                                  
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    toast.error('Kích thước file quá lớn. Tối đa 5MB');
+                                    return;
+                                  }
+                                  
+                                  // Gọi API tải lên ảnh xác minh (truyền File object)
+                                  uploadVerificationPhoto(file)
                                     .then(response => {
                                       toast.success('Tải lên ảnh xác minh thành công. Vui lòng chờ quản trị viên xác nhận.');
                                     })
                                     .catch(error => {
+                                      console.error('Verification photo upload error:', error);
                                       toast.error(error.response?.data?.message || 'Lỗi khi tải lên ảnh xác minh');
                                     });
                                 }
@@ -1272,16 +1286,16 @@ const Profile = () => {
                           type="button"
                           className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                           onClick={() => {
-                            const formData = new FormData();
-                            formData.append('type', 'verification');
-                            formData.append('imageUrl', currentUser.verification.selfiePhoto);
-                            
-                            // Gọi API xóa ảnh
+                            // Gọi API xóa ảnh (base64 - chỉ cần xóa khỏi database)
                             axios.delete(`${API_URL}/api/upload/image`, {
                               headers: {
-                                Authorization: `Bearer ${localStorage.getItem('token')}`
+                                Authorization: `Bearer ${localStorage.getItem('token')}`,
+                                'Content-Type': 'application/json'
                               },
-                              data: formData
+                              data: {
+                                imageUrl: currentUser.verification.selfiePhoto,
+                                type: 'verification'
+                              }
                             })
                             .then(response => {
                               // Cập nhật thông tin người dùng trong formData
@@ -1297,7 +1311,8 @@ const Profile = () => {
                               toast.success('Đã xóa ảnh xác minh');
                             })
                             .catch(error => {
-                              toast.error('Lỗi khi xóa ảnh xác minh');
+                              console.error('Error deleting verification photo:', error);
+                              toast.error(error.response?.data?.message || 'Lỗi khi xóa ảnh xác minh');
                             });
                           }}
                         >

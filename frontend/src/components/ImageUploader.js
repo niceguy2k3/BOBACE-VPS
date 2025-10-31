@@ -5,6 +5,7 @@ import axios from 'axios';
 import imageCompression from 'browser-image-compression';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { useAuth } from '../contexts/AuthContext';
+import { fileToBase64, filesToBase64 } from '../utils/imageUtils';
 
 const ImageUploader = ({ 
   onImageUploaded, 
@@ -257,14 +258,8 @@ const ImageUploader = ({
       
       const config = {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          setProgress(percentCompleted);
         },
         timeout: 120000, // Tăng timeout lên 120 giây (2 phút)
         cancelToken: cancelTokenRef.current.token
@@ -273,28 +268,28 @@ const ImageUploader = ({
       let response;
       
       if (type === 'multiple') {
-        // Upload multiple images
-        const formData = new FormData();
-        
-        // Nén từng ảnh trước khi tải lên
+        // Upload multiple images - convert to base64
         setProgress(5); // Bắt đầu hiển thị tiến trình
         
+        // Compress and convert to base64
+        const base64Images = [];
         for (let i = 0; i < selectedFiles.length; i++) {
           const compressedFile = await compressImage(selectedFiles[i]);
-          formData.append('images', compressedFile);
+          const base64 = await fileToBase64(compressedFile);
+          base64Images.push(base64);
+          setProgress(5 + Math.round((i + 1) / selectedFiles.length * 85));
         }
         
-        setProgress(10); // Đã nén xong, chuẩn bị tải lên
+        setProgress(90); // Đã convert xong
         
-        console.log('Bắt đầu gửi request tải lên nhiều ảnh');
-        response = await axios.post(`${API_URL}/api/upload/images`, formData, config);
+        console.log('Bắt đầu gửi request tải lên nhiều ảnh (base64)');
+        response = await axios.post(`${API_URL}/api/upload/images`, { images: base64Images }, config);
         console.log('Kết quả trả về từ server:', response.data);
         
         if (response.data && response.data.photos) {
           console.log('Tải lên thành công, cập nhật UI');
           onImageUploaded(response.data.photos);
           
-          // Hiển thị thông báo thành công
           toast.success('Tải lên ảnh thành công', { 
             autoClose: 3000,
             closeButton: true,
@@ -310,32 +305,30 @@ const ImageUploader = ({
           toast.error('Phản hồi từ server không hợp lệ. Vui lòng thử lại sau.', { autoClose: 3000 });
         }
       } else {
-        // Upload single image (avatar)
-        const formData = new FormData();
-        
-        // Nén ảnh trước khi tải lên
+        // Upload single image (avatar) - convert to base64
         setProgress(5); // Bắt đầu hiển thị tiến trình
         
         const compressedFile = await compressImage(selectedFile);
+        setProgress(50);
         
-        setProgress(10); // Đã nén xong, chuẩn bị tải lên
-        
-        formData.append(type === 'avatar' ? 'avatar' : 'image', compressedFile);
+        const base64 = await fileToBase64(compressedFile);
+        setProgress(90);
         
         const endpoint = type === 'avatar' ? 'avatar' : 'image';
-        console.log('Bắt đầu gửi request tải lên ảnh đơn:', endpoint);
-        response = await axios.post(`${API_URL}/api/upload/${endpoint}`, formData, config);
+        const requestData = type === 'avatar' ? { avatar: base64 } : { image: base64 };
+        
+        console.log('Bắt đầu gửi request tải lên ảnh đơn (base64):', endpoint);
+        response = await axios.post(`${API_URL}/api/upload/${endpoint}`, requestData, config);
         console.log('Kết quả trả về từ server:', response.data);
         
         if (response.data) {
           console.log('Tải lên thành công, cập nhật UI');
           // Kiểm tra xem response có chứa url hoặc avatar không
-          const imageUrl = response.data.url || response.data.avatar;
+          const imageUrl = response.data.url || response.data.avatar || response.data.base64;
           
           if (imageUrl) {
             onImageUploaded(imageUrl);
             
-            // Hiển thị thông báo thành công
             toast.success('Tải lên ảnh thành công', { 
               autoClose: 3000,
               closeButton: true,
@@ -356,6 +349,8 @@ const ImageUploader = ({
           toast.error('Phản hồi từ server không hợp lệ. Vui lòng thử lại sau.');
         }
       }
+      
+      setProgress(100);
     } catch (error) {
       console.error('Error uploading image:', error);
       console.error('Error details:', {
@@ -438,42 +433,19 @@ const ImageUploader = ({
       // Kiểm tra xem imageUrl có phải là object hay string
       const finalImageUrl = typeof imageUrl === 'object' && imageUrl.url ? imageUrl.url : imageUrl;
       
-      // Trích xuất publicId từ URL (nếu có thể)
-      let publicId = null;
-      if (finalImageUrl && finalImageUrl.includes('cloudinary')) {
-        try {
-          // Format của URL Cloudinary thường là: 
-          // https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/public_id.extension
-          const urlParts = finalImageUrl.split('/');
-          const filenamePart = urlParts[urlParts.length - 1]; // Lấy phần cuối cùng (filename.extension)
-          const folderPart = urlParts[urlParts.length - 2]; // Lấy phần folder
-          
-          // Lấy phần tên file không có extension
-          const filename = filenamePart.split('.')[0];
-          
-          // PublicId thường bao gồm cả folder: folder/filename
-          publicId = `${folderPart}/${filename}`;
-          
-          console.log('Extracted publicId:', publicId);
-        } catch (err) {
-          console.error('Error extracting publicId:', err);
-        }
-      }
-      
       console.log('Deleting image with data:', {
         imageUrl: finalImageUrl,
-        publicId,
         type: 'photo'
       });
       
-      // Gọi API xóa ảnh
+      // Gọi API xóa ảnh (base64 - chỉ cần xóa khỏi database)
       const response = await axios.delete(`${API_URL}/api/upload/image`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         data: {
           imageUrl: finalImageUrl,
-          publicId: publicId,
           type: 'photo'
         }
       });
@@ -500,32 +472,29 @@ const ImageUploader = ({
         // Hiển thị thông báo tùy chỉnh
         setCustomToastMessage('Đã xóa ảnh thành công');
         setShowCustomToast(true);
-      
       }
     } catch (error) {
       console.error('Error deleting image:', error);
       console.error('Error response data:', error.response?.data);
       console.error('Image URL being deleted:', imageUrl);
       
-      // Nếu lỗi là do không thể xóa ảnh trên Cloudinary, vẫn cập nhật UI
-      if (error.response?.data?.message === 'Không thể xóa hình ảnh' || error.response?.status === 400) {
-        // Vẫn xóa ảnh khỏi UI và database
-        try {
-          // Xóa ảnh khỏi database người dùng bằng cách cập nhật mảng photos
-          const token = localStorage.getItem('token');
-          const finalImageUrl = typeof imageUrl === 'object' && imageUrl.url ? imageUrl.url : imageUrl;
-          
-          // Tạo mảng ảnh mới không bao gồm ảnh cần xóa
-          const newImages = [...currentImages];
-          newImages.splice(index, 1);
-          
-          // Cập nhật hồ sơ người dùng với mảng ảnh mới
-          await updateProfile({
-            photos: newImages
-          });
-          
-          // Cập nhật UI
-          onImageUploaded(newImages);
+      // Nếu có lỗi, vẫn cập nhật UI và database
+      try {
+        // Xóa ảnh khỏi database người dùng bằng cách cập nhật mảng photos
+        const token = localStorage.getItem('token');
+        const finalImageUrl = typeof imageUrl === 'object' && imageUrl.url ? imageUrl.url : imageUrl;
+        
+        // Tạo mảng ảnh mới không bao gồm ảnh cần xóa
+        const newImages = [...currentImages];
+        newImages.splice(index, 1);
+        
+        // Cập nhật hồ sơ người dùng với mảng ảnh mới
+        await updateProfile({
+          photos: newImages
+        });
+        
+        // Cập nhật UI
+        onImageUploaded(newImages);
           
         } catch (dbError) {
           console.error('Error removing photo from database:', dbError);
