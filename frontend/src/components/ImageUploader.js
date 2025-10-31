@@ -495,12 +495,10 @@ const ImageUploader = ({
         
         // Cập nhật UI
         onImageUploaded(newImages);
-          
-        } catch (dbError) {
-          console.error('Error removing photo from database:', dbError);
-          toast.error('Không thể xóa ảnh khỏi hồ sơ của bạn');
-        }
-      } else {
+        
+        toast.error(error.response?.data?.message || 'Không thể xóa ảnh trên server, nhưng đã cập nhật local.');
+      } catch (dbError) {
+        console.error('Error removing photo from database:', dbError);
         toast.error(error.response?.data?.message || 'Xóa ảnh thất bại. Vui lòng thử lại sau.');
       }
     } finally {

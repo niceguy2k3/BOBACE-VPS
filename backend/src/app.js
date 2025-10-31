@@ -34,7 +34,23 @@ const blindateController = require('./controllers/blindate.controller');
 const cronJobs = require('./cron');
 
 // Load environment variables
-dotenv.config();
+// Priority: .env.local > .env (for local development)
+if (process.env.NODE_ENV !== 'production') {
+  // Try to load .env.local first
+  const path = require('path');
+  const fs = require('fs');
+  const localEnvPath = path.join(__dirname, '../.env.local');
+  
+  if (fs.existsSync(localEnvPath)) {
+    dotenv.config({ path: localEnvPath });
+    console.log('✅ Loaded .env.local for local development');
+  } else {
+    dotenv.config();
+    console.log('⚠️  Using .env file (consider creating .env.local for local development)');
+  }
+} else {
+  dotenv.config(); // Production uses .env
+}
 
 // Initialize Express app
 const allowedOrigins = [

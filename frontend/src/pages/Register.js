@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { VIETNAM_CITIES } from '../config/constants';
 import Loader from '../components/Loader';
 import logo from '../images/logo2.png';
-import { FaCheck, FaTimes, FaCamera, FaUpload, FaTrash, FaImage } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaCamera, FaUpload, FaTrash, FaImage, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { showSuccessToast, showErrorToast } from '../utils/toastHelper';
 import axios from 'axios';
 import { API_URL } from '../config/constants';
@@ -46,6 +46,8 @@ const Register = () => {
   const [passwordFocus, setPasswordFocus] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const avatarInputRef = useRef(null);
   const photosInputRef = useRef(null);
   
@@ -555,18 +557,27 @@ const Register = () => {
                 >
                   Mật khẩu <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  onFocus={() => setPasswordFocus(true)}
-                  onBlur={() => setPasswordFocus(false)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  placeholder="Tối thiểu 8 ký tự"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    onFocus={() => setPasswordFocus(true)}
+                    onBlur={() => setPasswordFocus(false)}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="Tối thiểu 8 ký tự"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 
                 {/* Hiển thị độ mạnh của mật khẩu */}
                 {formData.password && (
@@ -640,16 +651,25 @@ const Register = () => {
                 >
                   Xác nhận mật khẩu <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  placeholder="Nhập lại mật khẩu"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="Nhập lại mật khẩu"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 {formData.password && formData.confirmPassword && (
                   <div className="mt-1 flex items-center">
                     {formData.password === formData.confirmPassword ? (

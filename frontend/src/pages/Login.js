@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
-import { FaEnvelope, FaLock, FaSignInAlt } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaSignInAlt, FaEye, FaEyeSlash } from 'react-icons/fa';
 import Loader from '../components/Loader';
 import logo from '../images/logo2.png';
 import { showSuccessToast, showErrorToast } from '../utils/toastHelper';
@@ -18,6 +18,7 @@ const Login = () => {
   const [forgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false);
   const [showVerificationAlert, setShowVerificationAlert] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -157,14 +158,21 @@ const Login = () => {
                       <FaLock className="text-neutral-500" />
                     </div>
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       id="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-3 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
+                      className="w-full pl-10 pr-10 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
                       placeholder="Nhập mật khẩu của bạn"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-500 hover:text-neutral-700 transition-colors"
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
                   </div>
                   <div className="flex justify-between mt-2">
                     <div className="flex items-center">

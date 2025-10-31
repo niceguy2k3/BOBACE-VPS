@@ -1,5 +1,6 @@
-export const API_URL = process.env.REACT_APP_API_URL;
-export const SOCKET_URL = process.env.REACT_APP_SOCKET_URL;
+// API URL with fallback to localhost for development
+export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+export const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
 
 export const VIETNAM_CITIES = [
   { value: 'An Giang', label: 'An Giang' },

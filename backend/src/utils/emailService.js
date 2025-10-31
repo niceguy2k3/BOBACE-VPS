@@ -21,8 +21,28 @@ const createTransporter = () => {
 // Gửi email xác thực tài khoản
 const sendVerificationEmail = async (email, verificationLink) => {
   try {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const hasEmailCredentials = process.env.EMAIL_USER && process.env.EMAIL_PASSWORD;
+    
     console.log('Attempting to send verification email to:', email);
     console.log('Verification link:', verificationLink);
+    
+    // Development mode: Nếu không có email credentials, chỉ log ra console
+    if (isDevelopment && !hasEmailCredentials) {
+      console.log('='.repeat(80));
+      console.log('📧 DEVELOPMENT MODE: Email would be sent (but skipped)');
+      console.log('To:', email);
+      console.log('Subject: Xác thực tài khoản BOBACE');
+      console.log('Verification Link:', verificationLink);
+      console.log('');
+      console.log('💡 To enable email sending in development, add to .env.local:');
+      console.log('   EMAIL_HOST=smtp.gmail.com');
+      console.log('   EMAIL_PORT=587');
+      console.log('   EMAIL_USER=your-email@gmail.com');
+      console.log('   EMAIL_PASSWORD=your-app-password');
+      console.log('='.repeat(80));
+      return true; // Return success để không block registration
+    }
     
     const transporter = createTransporter();
     
@@ -104,6 +124,12 @@ const sendVerificationEmail = async (email, verificationLink) => {
       console.error('Connection error. Please check your internet connection and firewall settings.');
     }
     
+    // Development mode: Nếu không có credentials, chỉ log warning
+    if (process.env.NODE_ENV === 'development' && !process.env.EMAIL_USER) {
+      console.warn('⚠️  Email not sent (no credentials in development mode)');
+      return true; // Return success để không block flow
+    }
+    
     throw error;
   }
 };
@@ -111,17 +137,38 @@ const sendVerificationEmail = async (email, verificationLink) => {
 // Gửi email mã xác nhận đặt lại mật khẩu
 const sendPasswordResetEmail = async (email, resetCode) => {
   try {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const hasEmailCredentials = process.env.EMAIL_USER && process.env.EMAIL_PASSWORD;
+    
     console.log('Attempting to send email to:', email);
-    console.log('Using email configuration:');
-    console.log('- EMAIL_HOST:', process.env.EMAIL_HOST);
-    console.log('- EMAIL_PORT:', process.env.EMAIL_PORT);
-    console.log('- EMAIL_USER:', process.env.EMAIL_USER);
-    console.log('- EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? '******' : 'Not set');
     
     // Luôn in mã xác nhận ra console để dễ kiểm tra
     console.log('==========================================================');
     console.log(`RESET CODE for ${email}: ${resetCode}`);
     console.log('==========================================================');
+    
+    // Development mode: Nếu không có email credentials, chỉ log ra console
+    if (isDevelopment && !hasEmailCredentials) {
+      console.log('='.repeat(80));
+      console.log('📧 DEVELOPMENT MODE: Email would be sent (but skipped)');
+      console.log('To:', email);
+      console.log('Subject: Đặt lại mật khẩu BOBACE');
+      console.log('Reset Code:', resetCode);
+      console.log('');
+      console.log('💡 To enable email sending in development, add to .env.local:');
+      console.log('   EMAIL_HOST=smtp.gmail.com');
+      console.log('   EMAIL_PORT=587');
+      console.log('   EMAIL_USER=your-email@gmail.com');
+      console.log('   EMAIL_PASSWORD=your-app-password');
+      console.log('='.repeat(80));
+      return true; // Return success để không block password reset
+    }
+    
+    console.log('Using email configuration:');
+    console.log('- EMAIL_HOST:', process.env.EMAIL_HOST);
+    console.log('- EMAIL_PORT:', process.env.EMAIL_PORT);
+    console.log('- EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('- EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? '******' : 'Not set');
     
     // Sử dụng transporter chung
     const transporter = createTransporter();

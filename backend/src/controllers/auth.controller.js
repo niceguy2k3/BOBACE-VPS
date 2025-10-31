@@ -96,8 +96,9 @@ exports.register = async (req, res, next) => {
       await emailVerification.save();
       console.log('Saved verification token to database');
       
-      // Tạo liên kết xác thực
-      const verificationLink = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+      // Tạo liên kết xác thực (ưu tiên FRONTEND_URL, fallback về CLIENT_URL hoặc localhost)
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+      const verificationLink = `${frontendUrl}/verify-email/${verificationToken}`;
       console.log('Verification link:', verificationLink);
       
       // Gửi email xác thực
@@ -460,8 +461,10 @@ exports.resendVerificationEmail = async (req, res, next) => {
     await emailVerification.save();
     console.log('Saved new verification token to database');
     
-    // Tạo liên kết xác thực
-    const verificationLink = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+    // Tạo liên kết xác thực (ưu tiên FRONTEND_URL, fallback về CLIENT_URL hoặc localhost)
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+    const verificationLink = `${frontendUrl}/verify-email/${verificationToken}`;
+    console.log('Verification link:', verificationLink);
     
     // Gửi email xác thực
     await sendVerificationEmail(user.email, verificationLink);
