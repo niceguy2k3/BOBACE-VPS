@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install -g npm@10.5.2
 RUN rm -rf node_modules package-lock.json
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . .
 FROM node:24-slim
 WORKDIR /app
