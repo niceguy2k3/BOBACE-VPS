@@ -1,0 +1,47 @@
+# Root level .gitignore
+# This file applies to the entire repository
+
+# Node modules (should be ignored in all subdirectories)
+**/node_modules/
+node_modules/
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+.env
+.env*.local
+
+# Build outputs
+**/build/
+**/dist/
+build/
+dist/
+
+# Logs
+**/logs/
+**/*.log
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary files
+**/tmp/
+**/temp/
+tmp/
+temp/
+
