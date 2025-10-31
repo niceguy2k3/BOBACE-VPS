@@ -5,7 +5,6 @@ RUN npm install -g npm@10.5.2
 RUN rm -rf node_modules package-lock.json
 RUN npm install
 COPY . .
-RUN npm run build
 FROM node:24-slim
 WORKDIR /app
 RUN npm i -g serve@14
