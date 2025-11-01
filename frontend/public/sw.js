@@ -1,7 +1,7 @@
 // Service Worker cho BoBace PWA
-const CACHE_NAME = 'bobace-pwa-v1';
-const RUNTIME_CACHE = 'bobace-runtime-v1';
-const ASSETS_CACHE = 'bobace-assets-v1';
+const CACHE_NAME = 'bobace-pwa-v2';
+const RUNTIME_CACHE = 'bobace-runtime-v2';
+const ASSETS_CACHE = 'bobace-assets-v2';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -280,5 +280,6 @@ self.addEventListener('message', (event) => {
     self.clients.claim();
   }
 });
+
 
 
