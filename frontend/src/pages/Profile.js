@@ -260,15 +260,18 @@ const Profile = () => {
     <div className="py-8">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6 mt-16">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Hồ sơ cá nhân</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+            <span className="hidden sm:inline">Hồ sơ cá nhân</span>
+            <span className="sm:hidden">Hồ sơ</span>
+          </h2>
           
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {currentUser?.premium && (
-              <div className="flex items-center bg-yellow-100 px-4 py-2 rounded-full">
-                <FaCrown className="text-yellow-600 mr-2" />
-                <span className="font-medium text-yellow-800">Premium</span>
+              <div className="flex items-center bg-yellow-100 px-2 sm:px-4 py-2 rounded-full">
+                <FaCrown className="text-yellow-600 mr-1 sm:mr-2" />
+                <span className="font-medium text-yellow-800 text-sm sm:text-base">Premium</span>
                 {currentUser?.premiumUntil && (
-                  <span className="ml-2 text-sm text-yellow-600">
+                  <span className="ml-1 sm:ml-2 text-xs sm:text-sm text-yellow-600 hidden md:inline">
                     (Còn {Math.max(0, Math.ceil((new Date(currentUser.premiumUntil) - new Date()) / (1000 * 60 * 60 * 24)))} ngày)
                   </span>
                 )}
@@ -276,9 +279,9 @@ const Profile = () => {
             )}
             
             {currentUser?.verified && (
-              <div className="flex items-center bg-green-100 px-4 py-2 rounded-full">
-                <FaUserCheck className="text-green-600 mr-2" />
-                <span className="font-medium text-green-800">Đã xác minh</span>
+              <div className="flex items-center bg-green-100 px-2 sm:px-4 py-2 rounded-full">
+                <FaUserCheck className="text-green-600 mr-1 sm:mr-2" />
+                <span className="font-medium text-green-800 text-sm sm:text-base">Đã xác minh</span>
               </div>
             )}
           </div>

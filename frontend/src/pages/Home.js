@@ -976,9 +976,11 @@ const Home = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex-grow">
                       <p className="text-sm font-medium text-neutral-700">
-                        Lượt thích hôm nay: <span className="font-bold">{likesLimit.likesUsed}/{likesLimit.likesLimit}</span>
+                        <span className="hidden sm:inline">Lượt thích hôm nay: </span>
+                        <span className="sm:hidden">Thích: </span>
+                        <span className="font-bold">{likesLimit.likesUsed}/{likesLimit.likesLimit}</span>
                         {likesLimit.likesRemaining <= 5 && (
-                          <span className="ml-2 text-xs text-red-500 font-medium animate-pulse">
+                          <span className="ml-2 text-xs text-red-500 font-medium animate-pulse hidden sm:inline">
                             (Sắp hết lượt!)
                           </span>
                         )}

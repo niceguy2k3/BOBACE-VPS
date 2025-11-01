@@ -7,20 +7,46 @@ const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
+// Helper functions for safe localStorage access
+const safeGetItem = (key) => {
+  try {
+    return localStorage.getItem(key);
+  } catch (error) {
+    console.warn('Không thể truy cập localStorage:', error);
+    return null;
+  }
+};
+
+const safeSetItem = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn('Không thể lưu vào localStorage:', error);
+  }
+};
+
+const safeRemoveItem = (key) => {
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.warn('Không thể xóa khỏi localStorage:', error);
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Khởi tạo trạng thái quyền vị trí từ localStorage nếu có
   const [locationPermission, setLocationPermission] = useState(() => {
-    const savedPermission = localStorage.getItem('locationPermissionStatus');
+    const savedPermission = safeGetItem('locationPermissionStatus');
     return savedPermission || 'pending'; // 'granted', 'denied', 'pending'
   });
 
   // Lưu trạng thái quyền vị trí vào localStorage mỗi khi nó thay đổi
   useEffect(() => {
     if (locationPermission !== 'pending') {
-      localStorage.setItem('locationPermissionStatus', locationPermission);
+      safeSetItem('locationPermissionStatus', locationPermission);
     }
   }, [locationPermission]);
 
@@ -30,7 +56,7 @@ export const AuthProvider = ({ children }) => {
   // Thêm interceptor để tự động thêm token vào header
   authAxios.interceptors.request.use(
     (config) => {
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -44,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     (response) => response,
     (error) => {
       if (error.response && error.response.status === 401) {
-        localStorage.removeItem('token');
+        safeRemoveItem('token');
         setCurrentUser(null);
       }
       return Promise.reject(error);
@@ -55,7 +81,7 @@ export const AuthProvider = ({ children }) => {
     // Check if user is logged in on mount
     const checkLoggedIn = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = safeGetItem('token');
         
         if (!token) {
           setLoading(false);
@@ -77,8 +103,8 @@ export const AuthProvider = ({ children }) => {
           if (Date.now() >= expiry) {
             console.log('Token has expired');
             // Nếu không có ghi nhớ đăng nhập, đăng xuất người dùng
-            if (!localStorage.getItem('rememberMe')) {
-              localStorage.removeItem('token');
+            if (!safeGetItem('rememberMe')) {
+              safeRemoveItem('token');
               sessionStorage.removeItem('currentUser');
               setCurrentUser(null);
               setLoading(false);
@@ -123,7 +149,7 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.setItem('currentUser', JSON.stringify(response.data));
       } catch (error) {
         console.error('Error checking authentication:', error);
-        localStorage.removeItem('token');
+        safeRemoveItem('token');
         sessionStorage.removeItem('currentUser');
       } finally {
         setLoading(false);
@@ -143,7 +169,7 @@ export const AuthProvider = ({ children }) => {
         return response.data;
       } else {
         // Nếu không yêu cầu xác thực email (trường hợp cũ), tiếp tục như trước
-        localStorage.setItem('token', response.data.token);
+        safeSetItem('token', response.data.token);
         setCurrentUser(response.data.user);
         return response.data;
       }
@@ -159,7 +185,7 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post(`${API_URL}/api/auth/verify-email`, { token });
       
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
+        safeSetItem('token', response.data.token);
         setCurrentUser(response.data.user);
       }
       
@@ -189,20 +215,21 @@ export const AuthProvider = ({ children }) => {
         password,
         rememberMe 
       });
-      localStorage.setItem('token', response.data.token);
+      safeSetItem('token', response.data.token);
       
       // Lưu thông tin về việc ghi nhớ đăng nhập
       if (rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
+        safeSetItem('rememberMe', 'true');
       } else {
-        localStorage.removeItem('rememberMe');
+        safeRemoveItem('rememberMe');
       }
       
       setCurrentUser(response.data.user);
       
       // Yêu cầu quyền thông báo và đăng ký subscription cho người dùng hiện tại
+      // Tách ra khỏi flow chính để không ảnh hưởng đến quá trình đăng nhập
       try {
-        // Đợi 1 giây để đảm bảo token đã được lưu
+        // Đợi một chút để đảm bảo token đã được lưu và UI đã cập nhật
         setTimeout(async () => {
           try {
             // Import webPushService
@@ -210,8 +237,12 @@ export const AuthProvider = ({ children }) => {
             
             // Kiểm tra xem trình duyệt có hỗ trợ thông báo không
             if ('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window) {
-              // Yêu cầu quyền thông báo
-              const subscription = await requestNotificationPermission();
+              // Yêu cầu quyền thông báo (không block nếu có lỗi)
+              const subscription = await requestNotificationPermission().catch(err => {
+                console.error('Lỗi khi đăng ký thông báo:', err);
+                return null;
+              });
+              
               if (subscription) {
                 console.log('Đăng ký thông báo thành công:', subscription);
               } else {
@@ -221,11 +252,13 @@ export const AuthProvider = ({ children }) => {
               console.log('Trình duyệt không hỗ trợ thông báo đẩy');
             }
           } catch (err) {
-            console.error('Lỗi khi đăng ký thông báo:', err);
+            console.error('Lỗi khi đăng ký thông báo (catch):', err);
+            // Không throw lỗi, chỉ log để không ảnh hưởng đến login
           }
         }, 1000);
       } catch (subError) {
-        console.error('Lỗi khi đăng ký thông báo:', subError);
+        console.error('Lỗi khi đăng ký thông báo (try-catch):', subError);
+        // Không throw lỗi, chỉ log để không ảnh hưởng đến login
       }
       
       return response.data;
@@ -236,8 +269,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('rememberMe');
+    safeRemoveItem('token');
+    safeRemoveItem('rememberMe');
     sessionStorage.removeItem('currentUser');
     setCurrentUser(null);
   };
@@ -245,7 +278,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       const config = {
         headers: {
@@ -265,7 +298,7 @@ export const AuthProvider = ({ children }) => {
   const updateAvatar = async (data) => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       // Support both old FormData and new { avatarUrl: base64 } format
       let requestData;
@@ -328,7 +361,7 @@ export const AuthProvider = ({ children }) => {
   const deleteAccount = async () => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       const config = {
         headers: {
@@ -337,7 +370,7 @@ export const AuthProvider = ({ children }) => {
       };
       
       await axios.delete(`${API_URL}/api/users/account`, config);
-      localStorage.removeItem('token');
+      safeRemoveItem('token');
       setCurrentUser(null);
     } catch (error) {
       setError(error.response?.data?.message || 'Đã xảy ra lỗi khi xóa tài khoản');
@@ -348,7 +381,7 @@ export const AuthProvider = ({ children }) => {
   const blockUser = async (userId) => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       const config = {
         headers: {
@@ -374,7 +407,7 @@ export const AuthProvider = ({ children }) => {
   const unblockUser = async (userId) => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       const config = {
         headers: {
@@ -400,7 +433,7 @@ export const AuthProvider = ({ children }) => {
   const getBlockedUsers = async () => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       const config = {
         headers: {
@@ -419,7 +452,7 @@ export const AuthProvider = ({ children }) => {
   const reportUser = async (userId, reason, description) => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       const config = {
         headers: {
@@ -470,7 +503,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       // Cập nhật vị trí lên server
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       const config = {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -500,7 +533,7 @@ export const AuthProvider = ({ children }) => {
       setLocationPermission('granted');
       
       // Lưu trạng thái đã cấp quyền vào localStorage
-      localStorage.setItem('locationPermissionGranted', 'true');
+      safeSetItem('locationPermissionGranted', 'true');
       
       return { success: true, message: 'Đã cập nhật vị trí thành công' };
     } catch (error) {
@@ -546,7 +579,7 @@ export const AuthProvider = ({ children }) => {
   const toggleIncognitoMode = async () => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       const config = {
         headers: {
@@ -588,7 +621,7 @@ export const AuthProvider = ({ children }) => {
   const uploadVerificationPhoto = async (file) => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
+      const token = safeGetItem('token');
       
       // Convert file to base64
       const base64 = await new Promise((resolve, reject) => {

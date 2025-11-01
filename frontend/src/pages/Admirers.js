@@ -236,7 +236,7 @@ const Admirers = () => {
           </motion.button>
           
           <motion.h1 
-            className="text-3xl font-bold text-center bg-gradient-to-r from-yellow-600 to-orange-500 text-transparent bg-clip-text"
+            className="text-2xl sm:text-3xl font-bold text-center bg-gradient-to-r from-yellow-600 to-orange-500 text-transparent bg-clip-text"
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.5 }}
@@ -293,11 +293,13 @@ const Admirers = () => {
                 <FaInfoCircle className="h-8 w-8" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-800 mb-1">
-                  Bạn có {admirerCount} người thích bí mật!
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1">
+                  <span className="hidden sm:inline">Bạn có {admirerCount} người thích bí mật!</span>
+                  <span className="sm:hidden">{admirerCount} người thích</span>
                 </h3>
-                <p className="text-gray-700">
-                  Hãy khám phá xem ai đang thầm thương trộm nhớ bạn! Mỗi người đều có thể là một cơ hội tuyệt vời.
+                <p className="text-gray-700 text-sm sm:text-base">
+                  <span className="hidden sm:inline">Hãy khám phá xem ai đang thầm thương trộm nhớ bạn! Mỗi người đều có thể là một cơ hội tuyệt vời.</span>
+                  <span className="sm:hidden">Khám phá ai thích bạn nhé! 💕</span>
                 </p>
               </div>
             </div>

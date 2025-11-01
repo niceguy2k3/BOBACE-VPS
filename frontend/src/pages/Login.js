@@ -183,8 +183,9 @@ const Login = () => {
                         onChange={(e) => setRememberMe(e.target.checked)}
                         className="w-4 h-4 text-yellow-500 border-neutral-300 rounded focus:ring-yellow-500"
                       />
-                      <label htmlFor="rememberMe" className="ml-2 text-sm text-neutral-700">
-                        Ghi nhớ đăng nhập
+                      <label htmlFor="rememberMe" className="ml-2 text-xs sm:text-sm text-neutral-700">
+                        <span className="hidden sm:inline">Ghi nhớ đăng nhập</span>
+                        <span className="sm:hidden">Ghi nhớ</span>
                       </label>
                     </div>
                     <button 

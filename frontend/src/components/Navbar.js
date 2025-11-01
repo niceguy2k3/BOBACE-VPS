@@ -244,7 +244,7 @@ const Navbar = () => {
                             className="flex items-center px-4 py-2 text-neutral-700 hover:bg-yellow-50 hover:text-yellow-600 transition-all duration-200"
                             onClick={() => setIsDropdownOpen(false)}
                           >
-                            <FaUser className="mr-3 text-yellow-500" /> Hồ sơ cá nhân
+                            <FaUser className="mr-3 text-yellow-500" /> <span className="hidden lg:inline">Hồ sơ cá nhân</span><span className="lg:hidden">Hồ sơ</span>
                           </Link>
                         </motion.div>
                         <motion.div whileHover={{ x: 5 }}>

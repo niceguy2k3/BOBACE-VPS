@@ -21,7 +21,7 @@ const defaultOptions = {
     textAlign: 'center',
     border: '1px solid rgba(255, 255, 255, 0.8)',
     padding: '12px 20px',
-    fontFamily: '"Poppins", sans-serif',
+    fontFamily: '"Inter", sans-serif',
     fontSize: '15px',
     fontWeight: '500',
     color: '#333',

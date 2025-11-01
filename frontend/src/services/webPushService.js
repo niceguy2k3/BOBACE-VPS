@@ -170,7 +170,9 @@ async function registerServiceWorker() {
 export const requestNotificationPermission = async () => {
   try {
     // Lấy VAPID public key từ server
-    await getVapidPublicKey();
+    await getVapidPublicKey().catch(err => {
+      console.warn('Không thể lấy VAPID key từ server, sử dụng key mặc định:', err);
+    });
     
     // Kiểm tra xem trình duyệt có hỗ trợ thông báo không
     if (!isNotificationSupported()) {
@@ -188,23 +190,28 @@ export const requestNotificationPermission = async () => {
     // Yêu cầu quyền thông báo
     let permission;
     
-    // Nếu quyền đã được cấp, không cần yêu cầu lại
-    if (Notification.permission === 'granted') {
-      permission = 'granted';
-      console.log('Quyền thông báo đã được cấp trước đó');
-    } else {
-      // Yêu cầu quyền thông báo
-      permission = await Notification.requestPermission();
-    }
-    
-    console.log('Kết quả yêu cầu quyền thông báo:', permission);
-    
-    if (permission !== 'granted') {
-      console.log('Quyền thông báo không được cấp');
+    try {
+      // Nếu quyền đã được cấp, không cần yêu cầu lại
+      if (Notification.permission === 'granted') {
+        permission = 'granted';
+        console.log('Quyền thông báo đã được cấp trước đó');
+      } else {
+        // Yêu cầu quyền thông báo
+        permission = await Notification.requestPermission();
+      }
+      
+      console.log('Kết quả yêu cầu quyền thông báo:', permission);
+      
+      if (permission !== 'granted') {
+        console.log('Quyền thông báo không được cấp');
+        return null;
+      }
+    } catch (permissionError) {
+      console.error('Lỗi khi yêu cầu quyền thông báo:', permissionError);
       return null;
     }
     
-    // Thử hiển thị thông báo test để xác nhận quyền
+    // Thử hiển thị thông báo test để xác nhận quyền (optional)
     try {
       const testNotification = new Notification('Thông báo test', {
         body: 'Đây là thông báo test để xác nhận quyền thông báo đã được cấp',
@@ -219,10 +226,17 @@ export const requestNotificationPermission = async () => {
       console.log('Đã hiển thị thông báo test thành công');
     } catch (notificationError) {
       console.error('Lỗi khi hiển thị thông báo test:', notificationError);
+      // Không return null, tiếp tục với việc đăng ký subscription
     }
 
     // Đăng ký service worker
-    const registration = await registerServiceWorker();
+    let registration;
+    try {
+      registration = await registerServiceWorker();
+    } catch (swError) {
+      console.error('Lỗi khi đăng ký service worker:', swError);
+      return null;
+    }
 
     // Kiểm tra xem đã có subscription chưa
     let subscription = await registration.pushManager.getSubscription();
@@ -279,7 +293,8 @@ export const requestNotificationPermission = async () => {
         console.log('Endpoint:', subscription.endpoint?.substring(0, 50) + '...');
       } catch (subscribeError) {
         console.error('❌ Lỗi khi tạo subscription mới:', subscribeError);
-        throw subscribeError;
+        // Không throw, chỉ log và return null
+        return null;
       }
     }
 
@@ -289,11 +304,17 @@ export const requestNotificationPermission = async () => {
       console.log('✅ Đã đăng ký subscription với server');
     } catch (registerError) {
       console.error('❌ Lỗi khi đăng ký subscription với server:', registerError);
-      throw registerError;
+      // Không throw, chỉ log và return null để không block login flow
+      return null;
     }
     
     // Lưu thông tin vào localStorage
-    localStorage.setItem('notification_registered', 'true');
+    try {
+      localStorage.setItem('notification_registered', 'true');
+    } catch (storageError) {
+      console.warn('Không thể lưu vào localStorage:', storageError);
+      // Không return null, vì subscription đã được tạo thành công
+    }
     
     return subscription;
   } catch (error) {
