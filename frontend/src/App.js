@@ -116,7 +116,7 @@ function App() {
               <LocationPermission />
               <PushNotificationManager />
               <PWAInstallPrompt />
-              <main className="w-full h-full flex-grow">
+              <main className="w-full h-full flex-grow pb-20 md:pb-0">
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />

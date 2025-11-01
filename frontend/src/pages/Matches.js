@@ -585,7 +585,7 @@ const Matches = () => {
         
         {/* Floating action button */}
         <motion.div
-          className="fixed bottom-6 right-6 z-20"
+          className="fixed bottom-24 md:bottom-6 right-6 z-20"
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.8, type: "spring" }}

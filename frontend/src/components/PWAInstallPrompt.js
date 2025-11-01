@@ -15,16 +15,29 @@ const PWAInstallPrompt = () => {
     setIsStandalone(isStandaloneMode);
     setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
 
+    // Don't show banner if already installed
+    if (isStandaloneMode) {
+      return;
+    }
+
+    // Check if user has dismissed the banner permanently
+    const dismissed = localStorage.getItem('pwa-banner-dismissed');
+    if (dismissed === 'true') {
+      return;
+    }
+
+    // Show banner after 3 seconds for mobile users
+    const timer = setTimeout(() => {
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile && !isStandaloneMode) {
+        setShowBanner(true);
+      }
+    }, 3000);
+
     // Listen for beforeinstallprompt event (Android Chrome)
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowBanner(true);
-
-      // Hide banner after 10 seconds if not clicked
-      setTimeout(() => {
-        setShowBanner(false);
-      }, 10000);
     };
 
     // Listen for app installed event
@@ -38,6 +51,7 @@ const PWAInstallPrompt = () => {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
@@ -67,11 +81,11 @@ const PWAInstallPrompt = () => {
 
   const handleDismiss = () => {
     setShowBanner(false);
-    // Hide for session
-    sessionStorage.setItem('pwa-install-dismissed', 'true');
+    // Hide permanently
+    localStorage.setItem('pwa-banner-dismissed', 'true');
   };
 
-  // Don't show if already installed or dismissed
+  // Don't show if already installed
   if (isStandalone || !showBanner) {
     return null;
   }
@@ -82,16 +96,27 @@ const PWAInstallPrompt = () => {
       <div
         style={{
           position: 'fixed',
-          bottom: 0,
+          bottom: '64px',
           left: 0,
           right: 0,
-          background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)',
+          background: 'linear-gradient(135deg, #FFE66D 0%, #FF6B6B 100%)',
           color: 'white',
-          padding: '1rem',
+          padding: '1.5rem 1rem',
           zIndex: 10000,
-          boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+          animation: 'slideUp 0.3s ease-out',
         }}
       >
+        <style>{`
+          @keyframes slideUp {
+            from {
+              transform: translateY(100%);
+            }
+            to {
+              transform: translateY(0);
+            }
+          }
+        `}</style>
         <div
           style={{
             display: 'flex',
@@ -103,30 +128,37 @@ const PWAInstallPrompt = () => {
           }}
         >
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
-              📱 Cài đặt BoBace
+            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+              📱 Cài đặt BoBace ngay!
             </div>
-            <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>
-              Nhấn <span style={{ fontWeight: 'bold' }}>Chia sẻ</span> {String.fromCharCode(8594)}{' '}
-              <span style={{ fontWeight: 'bold' }}>Thêm vào Màn hình chính</span>
+            <div style={{ fontSize: '0.9rem', opacity: 0.95, lineHeight: '1.4' }}>
+              Nhấn <span style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.2)', padding: '2px 6px', borderRadius: '4px' }}>Chia sẻ</span> {String.fromCharCode(8594)}{' '}
+              <span style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.2)', padding: '2px 6px', borderRadius: '4px' }}>Thêm vào Màn hình chính</span>
             </div>
           </div>
           <button
             onClick={handleDismiss}
             style={{
-              background: 'transparent',
-              border: '1px solid white',
+              background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.5)',
               color: 'white',
               padding: '0.5rem',
-              borderRadius: '4px',
+              borderRadius: '8px',
               cursor: 'pointer',
               fontWeight: 'bold',
-              fontSize: '1.2rem',
-              minWidth: '32px',
-              height: '32px',
+              fontSize: '1.5rem',
+              minWidth: '36px',
+              height: '36px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.target.style.background = 'rgba(255,255,255,0.3)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.background = 'rgba(255,255,255,0.2)';
             }}
             aria-label="Đóng"
           >
@@ -142,16 +174,27 @@ const PWAInstallPrompt = () => {
     <div
       style={{
         position: 'fixed',
-        bottom: 0,
+        bottom: '64px',
         left: 0,
         right: 0,
-        background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)',
+        background: 'linear-gradient(135deg, #FFE66D 0%, #FF6B6B 100%)',
         color: 'white',
-        padding: '1rem',
+        padding: '1.5rem 1rem',
         zIndex: 10000,
-        boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+        animation: 'slideUp 0.3s ease-out',
       }}
     >
+      <style>{`
+        @keyframes slideUp {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+      `}</style>
       <div
         style={{
           display: 'flex',
@@ -163,11 +206,11 @@ const PWAInstallPrompt = () => {
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
-            📱 Cài đặt BoBace
+          <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+            📱 Cài đặt BoBace ngay!
           </div>
-          <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>
-            Cài đặt để trải nghiệm tốt hơn như một ứng dụng thực!
+          <div style={{ fontSize: '0.9rem', opacity: 0.95, lineHeight: '1.4' }}>
+            Cài đặt để trải nghiệm như một app thực, truy cập nhanh hơn!
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -177,12 +220,13 @@ const PWAInstallPrompt = () => {
               background: 'white',
               color: '#FF6B6B',
               border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
+              padding: '0.6rem 1.2rem',
+              borderRadius: '8px',
               cursor: 'pointer',
               fontWeight: 'bold',
-              fontSize: '0.875rem',
+              fontSize: '0.9rem',
               transition: 'all 0.2s',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             }}
             onMouseOver={(e) => {
               e.target.style.background = '#f0f0f0';
@@ -198,26 +242,27 @@ const PWAInstallPrompt = () => {
           <button
             onClick={handleDismiss}
             style={{
-              background: 'transparent',
-              border: '1px solid white',
+              background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.5)',
               color: 'white',
               padding: '0.5rem',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: 'pointer',
               fontWeight: 'bold',
-              fontSize: '1.2rem',
+              fontSize: '1.5rem',
               minWidth: '36px',
               height: '36px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transition: 'all 0.2s',
             }}
             aria-label="Đóng"
             onMouseOver={(e) => {
-              e.target.style.background = 'rgba(255,255,255,0.1)';
+              e.target.style.background = 'rgba(255,255,255,0.3)';
             }}
             onMouseOut={(e) => {
-              e.target.style.background = 'transparent';
+              e.target.style.background = 'rgba(255,255,255,0.2)';
             }}
           >
             ×

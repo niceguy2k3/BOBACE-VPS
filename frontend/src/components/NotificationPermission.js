@@ -210,7 +210,7 @@ const NotificationPermission = () => {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm z-50 border border-yellow-200">
+      <div className="fixed bottom-24 md:bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm z-50 border border-yellow-200">
         <div className="flex items-start">
           <div className="flex-shrink-0 pt-0.5">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
