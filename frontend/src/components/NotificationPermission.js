@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  isPushNotificationSupported, 
-  askUserPermission, 
-  initializePushNotifications 
-} from '../services/push-notification.service';
+import webPushService from '../services/webPushService';
 import NotificationGuide from './NotificationGuide';
+
+// Alias functions from webPushService for compatibility
+const isPushNotificationSupported = webPushService.isNotificationSupported;
+const askUserPermission = Notification.requestPermission.bind(Notification);
+const initializePushNotifications = webPushService.updateSubscriptionUser;
 
 const NotificationPermission = () => {
   const [showPrompt, setShowPrompt] = useState(false);
@@ -119,90 +120,57 @@ const NotificationPermission = () => {
         });
       }
       
-      // Sử dụng service để đăng ký thông báo đẩy
-      const tokenPromise = initializePushNotifications();
-      
-      // Thêm timeout để đảm bảo không bị treo vô hạn
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout khi đăng ký thông báo')), 15000);
-      });
-      
-      // Sử dụng Promise.race để đảm bảo không bị treo quá lâu
-      const token = await Promise.race([tokenPromise, timeoutPromise]);
+      // Yêu cầu quyền thông báo
+      const permissionResult = await askUserPermission();
+      console.log('Kết quả yêu cầu quyền:', permissionResult);
       
       // Đóng toast đang xử lý
       toast.dismiss(processingToast);
       
-      // Kiểm tra lại trạng thái quyền sau khi yêu cầu
-      console.log('Trạng thái quyền thông báo sau khi yêu cầu:', Notification.permission);
-      
-      if (token) {
-        // Lưu thông tin vào localStorage
-        localStorage.setItem('notificationJustGranted', 'true');
-        localStorage.setItem('notification_registered', 'true');
-        localStorage.setItem('notification_user_id', currentUser._id);
+      if (permissionResult === 'granted') {
+        // Yêu cầu quyền thành công, đăng ký subscription
+        const subscription = await webPushService.requestNotificationPermission();
         
-        // Sử dụng toast với thời gian ngắn hơn
-        toast.success('Bạn sẽ nhận được thông báo khi có tin nhắn mới', {
-          autoClose: 2000,
-          hideProgressBar: true
-        });
-        
-        // Thử gửi thông báo test
-        setTimeout(() => {
-        }, 2000);
-        
-        // Thay vì reload toàn bộ trang, chỉ cập nhật trạng thái
-        // và kích hoạt sự kiện tùy chỉnh để thông báo cho các component khác
-        const event = new CustomEvent('notificationPermissionChanged', { 
-          detail: { permission: 'granted', token } 
-        });
-        window.dispatchEvent(event);
-        
-        // Thử đăng ký lại sau 3 giây để đảm bảo
-        setTimeout(async () => {
-          try {
-            console.log('Thử đăng ký lại token thiết bị để đảm bảo...');
-            await initializePushNotifications();
-          } catch (retryError) {
-            console.error('Lỗi khi thử đăng ký lại token thiết bị:', retryError);
-          }
-        }, 3000);
-      } else if (Notification.permission === 'granted') {
-        // Nếu đã được cấp quyền nhưng không lấy được token
-        toast.warning('Đã được cấp quyền thông báo nhưng không thể đăng ký thiết bị', {
-          autoClose: 3000
-        });
-      } else if (Notification.permission === 'denied') {
-        // Nếu quyền bị từ chối, hiển thị hướng dẫn
+        if (subscription) {
+          // Lưu thông tin vào localStorage
+          localStorage.setItem('notificationJustGranted', 'true');
+          localStorage.setItem('notification_registered', 'true');
+          localStorage.setItem('notification_user_id', currentUser._id);
+          
+          // Sử dụng toast với thời gian ngắn hơn
+          toast.success('Đã bật thông báo thành công!', {
+            autoClose: 2000,
+            hideProgressBar: true
+          });
+          
+          // Kích hoạt sự kiện tùy chỉnh để thông báo cho các component khác
+          const event = new CustomEvent('notificationPermissionChanged', { 
+            detail: { permission: 'granted', subscription } 
+          });
+          window.dispatchEvent(event);
+        } else {
+          // Nếu đã được cấp quyền nhưng không đăng ký được subscription
+          toast.warning('Đã được cấp quyền thông báo nhưng không thể đăng ký thiết bị', {
+            autoClose: 3000
+          });
+        }
+      } else if (permissionResult === 'denied') {
+        // Nếu quyền bị từ chối
         toast.error('Quyền thông báo đã bị từ chối. Bạn cần thay đổi cài đặt trình duyệt để nhận thông báo.', {
           autoClose: 8000,
           onClick: () => setShowGuide(true)
         });
         
-        // Hiển thị hướng dẫn cách bật thông báo sau 1 giây
         setTimeout(() => {
           setShowGuide(true);
         }, 1000);
         
-        // Lưu vào localStorage để không hiển thị lại trong 3 ngày
-        const dismissData = {
-          timestamp: Date.now(),
-          expiresIn: 3 * 24 * 60 * 60 * 1000 // 3 ngày
-        };
-        localStorage.setItem('notificationPromptDismissedData', JSON.stringify(dismissData));
+        localStorage.setItem('notificationPermanentlyDismissed', 'true');
       } else {
-        // Nếu không lấy được token và không được cấp quyền
-        toast.warning('Không thể đăng ký thông báo. Vui lòng thử lại sau.', {
-          autoClose: 3000
+        // Nếu hủy hoặc không cấp quyền
+        toast.info('Bạn đã hủy yêu cầu quyền thông báo', {
+          autoClose: 2000
         });
-        
-        // Lưu vào localStorage để không hiển thị lại trong 1 ngày
-        const dismissData = {
-          timestamp: Date.now(),
-          expiresIn: 24 * 60 * 60 * 1000 // 1 ngày
-        };
-        localStorage.setItem('notificationPromptDismissedData', JSON.stringify(dismissData));
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);

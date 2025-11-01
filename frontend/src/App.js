@@ -4,7 +4,6 @@ import { ToastContainer, Flip, Bounce, Slide, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './styles/toast-custom.css';
 import './styles/notifications.css';
-import injectFirebaseConfigToServiceWorker from './utils/firebase-config-injector';
 
 // Context Providers
 import { AuthProvider } from './contexts/AuthContext';
@@ -62,9 +61,10 @@ import Navbar from './components/Navbar';
 import NotificationPermission from './components/NotificationPermission';
 import LocationPermission from './components/LocationPermission';
 import PushNotificationManager from './components/PushNotificationManager';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 function App() {
-  // Preload notification sound và inject Firebase config khi ứng dụng khởi động
+  // Preload notification sound khi ứng dụng khởi động
   React.useEffect(() => {
     if ('Audio' in window) {
       try {
@@ -75,16 +75,7 @@ function App() {
       }
     }
     
-    // Inject Firebase config vào Service Worker
-    if ('serviceWorker' in navigator) {
-      try {
-        injectFirebaseConfigToServiceWorker();
-      } catch (error) {
-        console.error('Error injecting Firebase config to Service Worker:', error);
-      }
-    }
-    
-    // Tối ưu hóa performance bằng cách tắt React.StrictMode trong production
+    // Tối ưu hóa performance bằng cách tắt console log trong production
     if (process.env.NODE_ENV === 'production') {
       console.log = () => {};
       console.info = () => {};
@@ -124,6 +115,7 @@ function App() {
               <NotificationPermission />
               <LocationPermission />
               <PushNotificationManager />
+              <PWAInstallPrompt />
               <main className="w-full h-full flex-grow">
               <Routes>
                 {/* Public Routes */}

@@ -271,10 +271,27 @@ exports.sendNotificationToUser = async (userId, notification) => {
 
     if (!subscriptions || subscriptions.length === 0) {
       console.log(`No subscriptions found for user ${userIdObj}`);
+      // KHÔNG throw error, chỉ return false để caller có thể xử lý
       return false;
     }
 
     console.log(`Found ${subscriptions.length} subscriptions for user ${userIdObj}`);
+    
+    // Filter chỉ lấy subscriptions hợp lệ
+    const validSubscriptions = subscriptions.filter(sub => {
+      return sub.subscription && 
+             sub.subscription.endpoint && 
+             sub.subscription.keys && 
+             sub.subscription.keys.p256dh && 
+             sub.subscription.keys.auth;
+    });
+    
+    if (validSubscriptions.length === 0) {
+      console.warn(`No valid subscriptions found for user ${userIdObj} (all ${subscriptions.length} subscriptions are invalid)`);
+      return false;
+    }
+    
+    console.log(`Processing ${validSubscriptions.length} valid subscriptions out of ${subscriptions.length} total`);
 
     // Chuẩn bị payload
     const payload = JSON.stringify({
@@ -287,12 +304,12 @@ exports.sendNotificationToUser = async (userId, notification) => {
       createdAt: notification.createdAt || new Date().toISOString()
     });
 
-    // Gửi thông báo đến tất cả subscription
+    // Gửi thông báo đến tất cả subscription hợp lệ
     let successCount = 0;
     let failureCount = 0;
     const errors = [];
 
-    for (const sub of subscriptions) {
+    for (const sub of validSubscriptions) {
       try {
         // Validate subscription object
         if (!sub.subscription) {
@@ -335,46 +352,133 @@ exports.sendNotificationToUser = async (userId, notification) => {
         }
         
         console.log(`Sending notification to subscription ${sub._id}, endpoint: ${sub.subscription.endpoint.substring(0, 50)}...`);
+        console.log(`Payload size: ${payload.length} bytes`);
+        console.log(`Keys: p256dh length=${sub.subscription.keys.p256dh?.length}, auth length=${sub.subscription.keys.auth?.length}`);
         
         // Gửi thông báo
-        await webpush.sendNotification(sub.subscription, payload);
-        successCount++;
-        console.log(`✅ Successfully sent notification to subscription ${sub._id}`);
-        
-        // Cập nhật lastActive
-        sub.lastActive = new Date();
-        await sub.save();
+        try {
+          await webpush.sendNotification(sub.subscription, payload);
+          successCount++;
+          console.log(`✅ Successfully sent notification to subscription ${sub._id}`);
+          
+          // Cập nhật lastActive
+          sub.lastActive = new Date();
+          await sub.save();
+        } catch (sendError) {
+          // Re-throw để catch block bên ngoài xử lý
+          throw sendError;
+        }
       } catch (error) {
         failureCount++;
-        console.error(`❌ Error sending notification to subscription ${sub._id}:`, error.message);
+        
+        const statusCode = error.statusCode || error.status;
+        const errorMessage = error.message || '';
+        const errorBody = error.body || '';
+        
+        console.error(`❌ Error sending notification to subscription ${sub._id}:`, errorMessage);
         console.error(`Error details:`, {
-          statusCode: error.statusCode,
+          statusCode: statusCode,
+          status: error.status,
           endpoint: sub.subscription?.endpoint?.substring(0, 50),
-          errorName: error.name
+          errorName: error.name,
+          errorCode: error.code,
+          errorBody: errorBody?.substring(0, 200)
         });
         
-        // CHỈ xóa subscription khi thực sự hết hạn hoặc invalid (404, 410)
-        // KHÔNG xóa khi lỗi do network, VAPID key, hoặc lỗi tạm thời khác
-        const isSubscriptionExpired = error.statusCode === 404 || error.statusCode === 410;
-        const isEndpointNotFound = error.message?.includes('ENOTFOUND') && error.statusCode;
+        // Phân tích lỗi chi tiết - RẤT CẨN THẬN khi xóa subscription
+        // CHỈ xóa khi CHẮC CHẮN 100% subscription đã expired, KHÔNG xóa khi nghi ngờ
+        const has404or410 = statusCode === 404 || statusCode === 410;
         
-        if (isSubscriptionExpired || isEndpointNotFound) {
-          console.log(`Subscription ${sub._id} is expired or invalid (status: ${error.statusCode}), removing...`);
+        // Kiểm tra các dấu hiệu subscription expired (phải rất rõ ràng)
+        const clearlyExpired = (
+          errorMessage.includes('No subscription') || 
+          errorMessage.includes('subscription has expired') ||
+          errorMessage.includes('Subscription has expired') ||
+          errorMessage.includes('expired subscription') ||
+          errorMessage.includes('Invalid registration') ||
+          (errorMessage.includes('expired') && errorMessage.includes('subscription')) ||
+          errorBody?.includes('expired subscription') ||
+          errorBody?.includes('No subscription') ||
+          errorBody?.includes('subscription has expired')
+        );
+        
+        // Kiểm tra các lỗi KHÔNG phải do subscription expired
+        const isVapidKeyError = errorMessage?.toLowerCase().includes('invalid') && 
+                                (errorMessage?.toLowerCase().includes('key') || 
+                                 errorMessage?.toLowerCase().includes('vapid') ||
+                                 errorMessage?.toLowerCase().includes('public key'));
+        const isNetworkError = errorMessage?.includes('timeout') || 
+                               errorMessage?.includes('ECONNREFUSED') ||
+                               errorMessage?.includes('network') ||
+                               errorMessage?.includes('ETIMEDOUT') ||
+                               errorMessage?.includes('ENOTFOUND');
+        const isConfigError = errorMessage?.includes('Public key') || 
+                             errorMessage?.includes('VAPID') ||
+                             errorMessage?.includes('authentication') ||
+                             errorMessage?.includes('Invalid VAPID');
+        const isUnspecified404 = has404or410 && !clearlyExpired && !errorMessage.includes('subscription');
+        
+        // CHỈ xóa khi:
+        // 1. Có 404/410 VÀ
+        // 2. Message RÕ RÀNG chỉ ra subscription expired (không phải lỗi khác) VÀ
+        // 3. KHÔNG phải lỗi VAPID key, network, hoặc config VÀ
+        // 4. KHÔNG phải lỗi 404 không rõ ràng (có thể do VAPID key)
+        const shouldDelete = has404or410 && 
+                            clearlyExpired && 
+                            !isVapidKeyError && 
+                            !isNetworkError && 
+                            !isConfigError &&
+                            !isUnspecified404;
+        
+        if (shouldDelete) {
+          console.log(`⚠️ Subscription ${sub._id} is CONFIRMED expired (status: ${statusCode}), removing...`);
+          console.log(`Expired indicators: ${errorMessage.substring(0, 200)}`);
           try {
+            const userId = sub.user;
             await Subscription.deleteOne({ _id: sub._id });
-            console.log(`✅ Removed expired/invalid subscription ${sub._id} for user ${sub.user}`);
+            console.log(`✅ Removed expired subscription ${sub._id} for user ${userId}`);
+            
+            // Sau khi xóa subscription expired, trigger re-registration
+            // Lưu thông tin vào DB để frontend có thể check và re-register
+            try {
+              const User = require('../models/user.model');
+              await User.findByIdAndUpdate(userId, {
+                $set: {
+                  needsReSubscription: true,
+                  lastReSubscriptionRequest: new Date()
+                }
+              }, { new: true });
+              console.log(`✅ Flagged user ${userId} for re-subscription`);
+            } catch (flagError) {
+              console.warn(`Could not flag user for re-subscription:`, flagError.message);
+            }
           } catch (deleteError) {
             console.error(`Error deleting expired subscription ${sub._id}:`, deleteError);
           }
         } else {
-          // Lỗi tạm thời (network, VAPID key config, etc.) - KHÔNG xóa subscription
-          console.warn(`⚠️ Subscription ${sub._id} failed but keeping it (status: ${error.statusCode || 'unknown'}). Error may be temporary.`);
+          // KHÔNG xóa subscription - an toàn hơn
+          console.warn(`⚠️ Subscription ${sub._id} failed but KEEPING it (will NOT delete):`);
+          console.warn(`  - Status code: ${statusCode || 'unknown'}`);
+          console.warn(`  - Error message: ${errorMessage.substring(0, 150)}`);
+          if (has404or410) {
+            if (!clearlyExpired) {
+              console.warn(`  - ⚠️ Has 404/410 but message doesn't clearly indicate expiration`);
+              console.warn(`  - ⚠️ Likely VAPID key/config issue - NOT deleting subscription`);
+            }
+            if (isVapidKeyError || isConfigError) {
+              console.warn(`  - ⚠️ Detected VAPID key/config error - fixable without deleting`);
+            }
+          }
+          if (isNetworkError) {
+            console.warn(`  - ⚠️ Network error - temporary, NOT deleting subscription`);
+          }
         }
         
         errors.push({
           subscriptionId: sub._id,
-          error: error.message || 'Unknown error',
-          statusCode: error.statusCode
+          error: errorMessage || 'Unknown error',
+          statusCode: statusCode,
+          kept: !(has404or410 && indicatesExpired && !isVapidKeyError && !isNetworkError && !isConfigError)
         });
       }
     }
@@ -383,9 +487,25 @@ exports.sendNotificationToUser = async (userId, notification) => {
     
     if (errors.length > 0) {
       console.log('Notification errors:', errors);
+      const keptCount = errors.filter(e => e.kept).length;
+      if (keptCount > 0) {
+        console.log(`⚠️ ${keptCount} subscriptions failed but were kept (errors may be temporary or fixable)`);
+      }
     }
 
-    return successCount > 0;
+    // Return true CHỈ KHI có ít nhất 1 notification được gửi thành công
+    // KHÔNG return true chỉ vì subscription được keep khi lỗi
+    // Vì mục đích là gửi notification, không phải keep subscription
+    if (successCount > 0) {
+      console.log(`✅ Successfully sent ${successCount} notification(s)`);
+      return true;
+    } else {
+      console.warn(`⚠️ No notifications were sent successfully`);
+      if (errors.length > 0) {
+        console.warn(`All ${errors.length} attempts failed (but subscriptions were kept for retry)`);
+      }
+      return false;
+    }
   } catch (error) {
     console.error('Error sending notification to user:', error);
     console.error('Error stack:', error.stack);
@@ -456,35 +576,85 @@ exports.sendNotificationToUsers = async (userIds, notification) => {
         await sub.save();
       } catch (error) {
         failureCount++;
-        console.error(`❌ Error sending notification to subscription ${sub._id}:`, error.message);
+        
+        const statusCode = error.statusCode || error.status;
+        const errorMessage = error.message || '';
+        const errorBody = error.body || '';
+        
+        console.error(`❌ Error sending notification to subscription ${sub._id}:`, errorMessage);
         console.error(`Error details:`, {
-          statusCode: error.statusCode,
+          statusCode: statusCode,
+          status: error.status,
           endpoint: sub.subscription?.endpoint?.substring(0, 50),
-          errorName: error.name
+          errorName: error.name,
+          errorCode: error.code,
+          errorBody: errorBody?.substring(0, 200)
         });
         
-        // CHỈ xóa subscription khi thực sự hết hạn hoặc invalid (404, 410)
-        // KHÔNG xóa khi lỗi do network, VAPID key, hoặc lỗi tạm thời khác
-        const isSubscriptionExpired = error.statusCode === 404 || error.statusCode === 410;
-        const isEndpointNotFound = error.message?.includes('ENOTFOUND') && error.statusCode;
+        // Phân tích lỗi chi tiết - RẤT CẨN THẬN khi xóa subscription
+        const has404or410 = statusCode === 404 || statusCode === 410;
         
-        if (isSubscriptionExpired || isEndpointNotFound) {
-          console.log(`Subscription ${sub._id} is expired or invalid (status: ${error.statusCode}), removing...`);
+        // Kiểm tra các dấu hiệu subscription expired (phải rất rõ ràng)
+        const clearlyExpired = (
+          errorMessage.includes('No subscription') || 
+          errorMessage.includes('subscription has expired') ||
+          errorMessage.includes('Subscription has expired') ||
+          errorMessage.includes('expired subscription') ||
+          errorMessage.includes('Invalid registration') ||
+          (errorMessage.includes('expired') && errorMessage.includes('subscription')) ||
+          errorBody?.includes('expired subscription') ||
+          errorBody?.includes('No subscription') ||
+          errorBody?.includes('subscription has expired')
+        );
+        
+        // Kiểm tra các lỗi KHÔNG phải do subscription expired
+        const isVapidKeyError = errorMessage?.toLowerCase().includes('invalid') && 
+                                (errorMessage?.toLowerCase().includes('key') || 
+                                 errorMessage?.toLowerCase().includes('vapid') ||
+                                 errorMessage?.toLowerCase().includes('public key'));
+        const isNetworkError = errorMessage?.includes('timeout') || 
+                               errorMessage?.includes('ECONNREFUSED') ||
+                               errorMessage?.includes('network') ||
+                               errorMessage?.includes('ETIMEDOUT') ||
+                               errorMessage?.includes('ENOTFOUND');
+        const isConfigError = errorMessage?.includes('Public key') || 
+                             errorMessage?.includes('VAPID') ||
+                             errorMessage?.includes('authentication') ||
+                             errorMessage?.includes('Invalid VAPID');
+        const isUnspecified404 = has404or410 && !clearlyExpired && !errorMessage.includes('subscription');
+        
+        // CHỈ xóa khi CHẮC CHẮN subscription expired
+        const shouldDelete = has404or410 && 
+                            clearlyExpired && 
+                            !isVapidKeyError && 
+                            !isNetworkError && 
+                            !isConfigError &&
+                            !isUnspecified404;
+        
+        if (shouldDelete) {
+          console.log(`⚠️ Subscription ${sub._id} is CONFIRMED expired (status: ${statusCode}), removing...`);
           try {
             await Subscription.deleteOne({ _id: sub._id });
-            console.log(`✅ Removed expired/invalid subscription ${sub._id} for user ${sub.user}`);
+            console.log(`✅ Removed expired subscription ${sub._id} for user ${sub.user}`);
           } catch (deleteError) {
             console.error(`Error deleting expired subscription ${sub._id}:`, deleteError);
           }
         } else {
-          // Lỗi tạm thời (network, VAPID key config, etc.) - KHÔNG xóa subscription
-          console.warn(`⚠️ Subscription ${sub._id} failed but keeping it (status: ${error.statusCode || 'unknown'}). Error may be temporary.`);
+          // KHÔNG xóa subscription - an toàn hơn
+          console.warn(`⚠️ Subscription ${sub._id} failed but KEEPING it (will NOT delete):`);
+          console.warn(`  - Status code: ${statusCode || 'unknown'}`);
+          console.warn(`  - Error message: ${errorMessage.substring(0, 150)}`);
+          if (has404or410 && !clearlyExpired) {
+            console.warn(`  - ⚠️ Has 404/410 but NOT clearly expired - likely VAPID key/config issue`);
+          }
         }
         
         errors.push({
           subscriptionId: sub._id,
-          error: error.message || 'Unknown error',
-          statusCode: error.statusCode
+          error: errorMessage || 'Unknown error',
+          statusCode: statusCode,
+          kept: !shouldDelete,
+          reason: shouldDelete ? 'expired' : (isVapidKeyError ? 'VAPID key' : isNetworkError ? 'network' : isConfigError ? 'config' : 'unknown')
         });
       }
     }
@@ -493,9 +663,23 @@ exports.sendNotificationToUsers = async (userIds, notification) => {
     
     if (errors.length > 0) {
       console.log('Notification errors:', errors);
+      const keptCount = errors.filter(e => e.kept).length;
+      if (keptCount > 0) {
+        console.log(`⚠️ ${keptCount} subscriptions failed but were kept (errors may be temporary or fixable)`);
+      }
     }
 
-    return successCount > 0;
+    // Return true CHỈ KHI có ít nhất 1 notification được gửi thành công
+    if (successCount > 0) {
+      console.log(`✅ Successfully sent ${successCount} notification(s) to ${userIdObjs.length} user(s)`);
+      return true;
+    } else {
+      console.warn(`⚠️ No notifications were sent successfully to any user`);
+      if (errors.length > 0) {
+        console.warn(`All ${errors.length} attempts failed (but subscriptions were kept for retry)`);
+      }
+      return false;
+    }
   } catch (error) {
     console.error('Error sending notification to users:', error);
     return false;

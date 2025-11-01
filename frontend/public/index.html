@@ -15,6 +15,19 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BoBace" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="BoBace" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="57x57" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo192.png" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -42,15 +55,73 @@
       // Đăng ký service worker khi trang đã tải xong
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/web-push-sw.js', { scope: '/' })
-            .then(function(registration) {
-              console.log('Service Worker đăng ký thành công với phạm vi:', registration.scope);
-            })
-            .catch(function(error) {
-              console.error('Lỗi đăng ký Service Worker:', error);
+          // Chỉ đăng ký service worker một lần
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            registrations.forEach(registration => {
+              registration.unregister().then(() => {
+                console.log('Service Worker cũ đã được xóa');
+              });
             });
+          }).finally(() => {
+            // Đăng ký service worker chính cho PWA
+            navigator.serviceWorker.register('/sw.js', { scope: '/' })
+              .then(function(registration) {
+                console.log('PWA Service Worker đăng ký thành công:', registration.scope);
+                
+                // Lắng nghe khi có update mới (không tự động reload)
+                registration.addEventListener('updatefound', () => {
+                  const newWorker = registration.installing;
+                  console.log('Service Worker đang cập nhật...');
+                  
+                  newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      console.log('Có phiên bản mới của ứng dụng!');
+                      // KHÔNG tự động hiển thị confirm, chỉ log
+                      // User sẽ tự reload khi cần
+                    }
+                  });
+                });
+              })
+              .catch(function(error) {
+                console.error('Lỗi đăng ký Service Worker:', error);
+              });
+            
+            // Đăng ký service worker cho web push notifications
+            navigator.serviceWorker.register('/web-push-sw.js', { scope: '/' })
+              .then(function(registration) {
+                console.log('Web Push Service Worker đăng ký thành công:', registration.scope);
+              })
+              .catch(function(error) {
+                console.error('Lỗi đăng ký Web Push Service Worker:', error);
+              });
+          });
+        });
+        
+        // Listen for service worker controller changes
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Service Worker controller đã thay đổi');
+          // Tự động reload khi controller thay đổi (không spam)
+          if (!sessionStorage.getItem('sw-reloading')) {
+            sessionStorage.setItem('sw-reloading', 'true');
+            window.location.reload();
+          }
         });
       }
+      
+      // Prevent zoom on iOS
+      document.addEventListener('gesturestart', function (e) {
+        e.preventDefault();
+      });
+      
+      // Disable pull-to-refresh on mobile
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', function (e) {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
     </script>
   </body>
 </html>

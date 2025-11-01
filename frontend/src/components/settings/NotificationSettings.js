@@ -4,11 +4,12 @@ import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { API_URL } from '../../config/constants';
-import { 
-  requestNotificationPermission, 
-  isNotificationSupported 
-} from '../../services/firebase';
+import webPushService from '../../services/webPushService';
 import NotificationGuide from '../NotificationGuide';
+
+// Alias functions for compatibility
+const requestNotificationPermission = webPushService.requestNotificationPermission;
+const isNotificationSupported = webPushService.isNotificationSupported;
 
 const NotificationSettings = () => {
   const [devices, setDevices] = useState([]);
@@ -18,12 +19,12 @@ const NotificationSettings = () => {
     typeof Notification !== 'undefined' && Notification.permission === 'granted'
   );
 
-  // Lấy danh sách thiết bị đã đăng ký
+  // Lấy danh sách subscriptions đã đăng ký
   useEffect(() => {
-    fetchDevices();
+    fetchSubscriptions();
   }, []);
 
-  const fetchDevices = async () => {
+  const fetchSubscriptions = async () => {
     try {
       setLoading(true);
       
@@ -35,23 +36,23 @@ const NotificationSettings = () => {
         return;
       }
       
-      const response = await axios.get(`${API_URL}/api/devices`, {
+      const response = await axios.get(`${API_URL}/api/web-push/subscriptions`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      setDevices(response.data.devices || []);
+      setDevices(response.data.subscriptions || []);
     } catch (error) {
-      console.error('Lỗi khi lấy danh sách thiết bị:', error);
+      console.error('Lỗi khi lấy danh sách subscriptions:', error);
       setDevices([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Xóa thiết bị
-  const handleRemoveDevice = async (deviceToken) => {
+  // Xóa subscription
+  const handleRemoveDevice = async (subscriptionId) => {
     try {
       // Lấy token xác thực từ localStorage
       const authToken = localStorage.getItem('token');
@@ -61,18 +62,17 @@ const NotificationSettings = () => {
         return;
       }
       
-      await axios.delete(`${API_URL}/api/devices/unregister`, { 
+      await axios.delete(`${API_URL}/api/web-push/subscriptions/${subscriptionId}`, { 
         headers: {
           'Authorization': `Bearer ${authToken}`
-        },
-        data: { token: deviceToken } 
+        }
       });
       
-      toast.success('Đã xóa thiết bị thành công');
-      fetchDevices();
+      toast.success('Đã xóa subscription thành công');
+      fetchSubscriptions();
     } catch (error) {
-      console.error('Lỗi khi xóa thiết bị:', error);
-      toast.error('Không thể xóa thiết bị');
+      console.error('Lỗi khi xóa subscription:', error);
+      toast.error('Không thể xóa subscription');
     }
   };
 
@@ -83,55 +83,40 @@ const NotificationSettings = () => {
     }
   
     try {
-      const processingToast = toast.info('Đang đăng ký thiết bị...', {
+      const processingToast = toast.info('Đang đăng ký Web Push...', {
         autoClose: false,
         hideProgressBar: false,
       });
   
-      localStorage.removeItem('fcm_token');
-      const token = await requestNotificationPermission();
+      const subscription = await requestNotificationPermission();
       toast.dismiss(processingToast);
   
-      if (token) {
+      if (subscription) {
         setNotificationsEnabled(true);
         toast.success('Đã bật thông báo thành công');
   
-        console.log('Waiting for server to save device...');
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        await fetchDevices();
+        // Chờ server lưu subscription
+        console.log('Waiting for server to save subscription...');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await fetchSubscriptions();
   
-        if (devices.length === 0) {
-          console.warn('No devices found, retrying...');
-          toast.warn('Không tìm thấy thiết bị đã đăng ký. Đang thử lại...');
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          await fetchDevices();
-          if (devices.length === 0) {
-            console.error('Still no devices found after retry');
-            toast.error('Không thể tải danh sách thiết bị. Vui lòng thử lại sau.');
-          }
-        }
-  
+        // Gửi thông báo test
         try {
           await testNotification();
           toast.success('Đã gửi thông báo test. Vui lòng kiểm tra.');
         } catch (testError) {
           console.error('Lỗi khi gửi thông báo test:', testError);
-          toast.error('Không thể gửi thông báo test');
-        }
-      } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        toast.warning('Đã được cấp quyền nhưng không thể đăng ký thiết bị. Đang thử lại...');
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        const retryToken = await requestNotificationPermission();
-        if (retryToken) {
-          toast.success('Đã đăng ký thiết bị thành công');
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          await fetchDevices();
-        } else {
-          toast.error('Không thể đăng ký thiết bị. Vui lòng làm mới trang và thử lại.');
+          // Hiển thị lỗi rõ ràng cho user
+          const errorMessage = testError.message || 'Không thể gửi thông báo test';
+          toast.error(errorMessage);
+          
+          // Refresh subscriptions để đảm bảo UI được cập nhật
+          setTimeout(() => {
+            fetchSubscriptions();
+          }, 1000);
         }
       } else {
-        toast.error('Quyền thông báo bị từ chối. Vui lòng kiểm tra cài đặt trình duyệt.');
-        setShowGuide(true);
+        toast.error('Không thể đăng ký Web Push. Vui lòng thử lại.');
       }
     } catch (error) {
       console.error('Lỗi khi bật thông báo:', error);
@@ -150,16 +135,55 @@ const NotificationSettings = () => {
         return;
       }
       
+      // Đảm bảo subscriptions đã được lưu vào DB trước khi test
+      // Đợi một chút để đảm bảo subscription đã được lưu
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      // Refresh subscriptions list trước khi test
+      await fetchSubscriptions();
+      
       // Gọi API để gửi thông báo test
-      await axios.post(`${API_URL}/api/notifications/test`, {}, {
+      const response = await axios.post(`${API_URL}/api/web-push/send-test`, {}, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
       });
       
-      console.log('Đã gửi yêu cầu thông báo test');
+      console.log('Đã gửi yêu cầu thông báo test:', response.data);
+      
+      // Nếu thành công nhưng không có subscription được gửi, hiển thị thông báo
+      if (response.data.success && response.data.subscriptionsCount === 0) {
+        console.warn('Test notification sent but no active subscriptions');
+      }
+      
+      return response.data;
     } catch (error) {
       console.error('Lỗi khi gửi thông báo test:', error);
+      
+      // Xử lý lỗi cụ thể
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 404 && data?.code === 'NO_SUBSCRIPTIONS') {
+          console.warn('No subscriptions found - user needs to enable notifications');
+          throw new Error('Bạn cần bật thông báo trước khi test. Vui lòng bật thông báo và thử lại.');
+        } else if (status === 400 && data?.code === 'INVALID_SUBSCRIPTIONS') {
+          console.warn('Invalid subscriptions found - user needs to re-enable');
+          throw new Error('Subscription không hợp lệ. Vui lòng bật lại thông báo.');
+        } else if (status === 400 && data?.code === 'NOTIFICATION_SEND_FAILED') {
+          console.warn('Notification send failed - subscription may be expired or VAPID key issue');
+          throw new Error(data?.message || 'Không thể gửi thông báo test. Vui lòng thử bật lại thông báo.');
+        } else if (status === 500 && data?.code === 'SEND_ERROR') {
+          console.error('Error sending notification:', data);
+          throw new Error(data?.message || 'Lỗi khi gửi thông báo test. Vui lòng thử lại sau.');
+        } else {
+          // Lỗi khác
+          const errorMsg = data?.message || error.message || 'Có lỗi xảy ra khi gửi thông báo test';
+          throw new Error(errorMsg);
+        }
+      }
+      
       throw error;
     }
   };
@@ -259,9 +283,9 @@ const NotificationSettings = () => {
           <h3 className="font-medium">Thiết bị đã đăng ký</h3>
           
           <button
-            onClick={() => fetchDevices()}
+            onClick={() => fetchSubscriptions()}
             className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-            title="Làm mới danh sách thiết bị"
+            title="Làm mới danh sách subscriptions"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -302,7 +326,7 @@ const NotificationSettings = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleRemoveDevice(device.token)}
+                  onClick={() => handleRemoveDevice(device.id)}
                   className="text-red-500 hover:text-red-700"
                 >
                   Xóa
