@@ -11,4 +11,4 @@ RUN npm i -g serve@14
 COPY --from=builder /app/public ./public
 ENV PORT=3000
 EXPOSE 3000
-CMD sh -c 'serve -s build -l tcp://0.0.0.0:${PORT:-3000}'
+CMD sh -c 'serve -s public -l tcp://0.0.0.0:${PORT:-3000}'
