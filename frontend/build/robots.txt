@@ -1,0 +1,35 @@
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /features
+Allow: /contact
+Allow: /legal
+Allow: /terms-of-service
+Allow: /privacy-policy
+Allow: /cookie-policy
+Allow: /login
+Allow: /register
+
+# Không cho phép bot truy cập vào các trang yêu cầu đăng nhập
+Disallow: /home
+Disallow: /explore
+Disallow: /matches
+Disallow: /chat/
+Disallow: /profile
+Disallow: /settings
+Disallow: /admirers
+Disallow: /blindate
+Disallow: /blindates/
+Disallow: /notifications
+Disallow: /report/
+
+# Không cho phép bot truy cập vào khu vực admin
+Disallow: /admin/
+Disallow: /admin
+
+# Không cho phép bot truy cập vào API
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://bobace.com/sitemap.xml

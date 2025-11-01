@@ -19,6 +19,8 @@ node_modules/
 **/dist/
 build/
 dist/
+# Exception: allow frontend/build
+!frontend/build/
 
 # Logs
 **/logs/
