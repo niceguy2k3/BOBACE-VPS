@@ -266,7 +266,16 @@ router.post('/api/web-push/send-test', authenticate, async (req, res) => {
     
     console.log('[Send Test] Calling sendNotificationToUser...');
     console.log('[Send Test] VAPID Public Key configured:', !!process.env.VAPID_PUBLIC_KEY);
+    console.log('[Send Test] VAPID Public Key from env:', process.env.VAPID_PUBLIC_KEY ? 'Yes' : 'No (using default)');
+    if (process.env.VAPID_PUBLIC_KEY) {
+      console.log('[Send Test] VAPID Public Key preview:', process.env.VAPID_PUBLIC_KEY.substring(0, 30) + '...');
+    }
     console.log('[Send Test] Valid subscriptions:', validSubscriptions.length);
+    
+    // Log subscription details
+    for (const sub of validSubscriptions) {
+      console.log(`[Send Test] Subscription ${sub._id}: endpoint=${sub.subscription.endpoint.substring(0, 60)}...`);
+    }
     
     try {
       const result = await webPushService.sendNotificationToUser(userId, notification);

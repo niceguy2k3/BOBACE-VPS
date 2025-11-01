@@ -44,12 +44,61 @@ const vapidKeys = {
   privateKey: process.env.VAPID_PRIVATE_KEY || 'lt948XU1iP988OakK1YSA9CesgMKsdGA_MIiZrt0wiA'
 };
 
+// Validate VAPID keys
+function validateVapidKeys() {
+  const { publicKey, privateKey } = vapidKeys;
+  
+  // Kiểm tra keys có tồn tại không
+  if (!publicKey || !privateKey) {
+    console.error('❌ VAPID keys missing');
+    return false;
+  }
+  
+  // Kiểm tra không phải placeholder
+  if (publicKey === 'your-vapid-public-key' || privateKey === 'your-vapid-private-key') {
+    console.error('❌ VAPID keys are placeholders');
+    return false;
+  }
+  
+  // Kiểm tra độ dài tối thiểu
+  if (publicKey.length < 50 || privateKey.length < 30) {
+    console.error(`❌ VAPID keys too short: public=${publicKey.length}, private=${privateKey.length}`);
+    return false;
+  }
+  
+  // Kiểm tra format base64url (public key)
+  if (!/^[A-Za-z0-9_-]+$/.test(publicKey)) {
+    console.error('❌ VAPID public key has invalid format (not base64url)');
+    return false;
+  }
+  
+  // Log keys đang dùng (chỉ show một phần)
+  console.log(`✅ VAPID keys configured:`);
+  console.log(`  - Public key: ${publicKey.substring(0, 20)}...${publicKey.substring(publicKey.length - 10)} (length: ${publicKey.length})`);
+  console.log(`  - Private key: ${privateKey.substring(0, 10)}...${privateKey.substring(privateKey.length - 10)} (length: ${privateKey.length})`);
+  console.log(`  - From env: ${process.env.VAPID_PUBLIC_KEY ? 'Yes' : 'No (using default)'}`);
+  
+  return true;
+}
+
+// Validate keys trước khi config
+const isValidVapidKeys = validateVapidKeys();
+if (!isValidVapidKeys) {
+  console.error('⚠️ WARNING: VAPID keys validation failed. Notifications may not work correctly.');
+}
+
 // Cấu hình web-push
-webpush.setVapidDetails(
-  'mailto:contact@bobace.com',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+try {
+  webpush.setVapidDetails(
+    'mailto:contact@bobace.com',
+    vapidKeys.publicKey,
+    vapidKeys.privateKey
+  );
+  console.log('✅ Web-push VAPID details configured successfully');
+} catch (error) {
+  console.error('❌ Error setting VAPID details:', error.message);
+  console.error('⚠️ Push notifications may not work correctly');
+}
 
 // Đăng ký subscription
 exports.registerSubscription = async (userId, subscriptionData, deviceInfo = {}) => {
@@ -351,13 +400,18 @@ exports.sendNotificationToUser = async (userId, notification) => {
           continue;
         }
         
-        console.log(`Sending notification to subscription ${sub._id}, endpoint: ${sub.subscription.endpoint.substring(0, 50)}...`);
-        console.log(`Payload size: ${payload.length} bytes`);
-        console.log(`Keys: p256dh length=${sub.subscription.keys.p256dh?.length}, auth length=${sub.subscription.keys.auth?.length}`);
+        console.log(`Sending notification to subscription ${sub._id}`);
+        console.log(`  - Endpoint: ${sub.subscription.endpoint.substring(0, 80)}...`);
+        console.log(`  - Payload size: ${payload.length} bytes`);
+        console.log(`  - Keys: p256dh=${sub.subscription.keys.p256dh?.length || 0} chars, auth=${sub.subscription.keys.auth?.length || 0} chars`);
+        console.log(`  - VAPID Public Key: ${vapidKeys.publicKey.substring(0, 20)}...`);
         
         // Gửi thông báo
         try {
-          await webpush.sendNotification(sub.subscription, payload);
+          await webpush.sendNotification(sub.subscription, payload, {
+            TTL: 3600,
+            urgency: 'normal'
+          });
           successCount++;
           console.log(`✅ Successfully sent notification to subscription ${sub._id}`);
           
@@ -365,6 +419,19 @@ exports.sendNotificationToUser = async (userId, notification) => {
           sub.lastActive = new Date();
           await sub.save();
         } catch (sendError) {
+          // Log lỗi chi tiết trước khi re-throw
+          console.error(`❌ sendNotification failed for subscription ${sub._id}:`);
+          console.error(`  - Error: ${sendError.message}`);
+          console.error(`  - Status: ${sendError.statusCode || sendError.status || 'N/A'}`);
+          console.error(`  - Code: ${sendError.code || 'N/A'}`);
+          if (sendError.body) {
+            try {
+              const bodyStr = typeof sendError.body === 'string' ? sendError.body : JSON.stringify(sendError.body);
+              console.error(`  - Body: ${bodyStr.substring(0, 200)}`);
+            } catch (e) {
+              console.error(`  - Body: [cannot parse]`);
+            }
+          }
           // Re-throw để catch block bên ngoài xử lý
           throw sendError;
         }
